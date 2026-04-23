@@ -190,6 +190,372 @@ const VISAS = [
   { id: "golden", label: "Investor / Golden Visa", desc: "Residency by investment — property, funds, business creation, or government-approved contribution.", needsCapital: true, minCapitalEUR: 50000, prYears: 5, icon: "★" },
 ];
 
+/* ---------- VISA DETAILS ------------------------------------------------- */
+/* Research-backed detailed data for each country/visa combo. Lookup falls back
+   to visa-type defaults when a country-specific entry is not present. Data
+   accurate as of early 2026; always verify at the official portal before acting. */
+
+const VISA_DETAILS_DEFAULTS = {
+  bluecard: {
+    income: "Salary at minimum 1× national average (≈ €45,000–€60,000/year depending on country). Shortage occupations often have lower thresholds.",
+    documents: "University degree or equivalent 3+ years IT experience, signed employment contract (6+ months), valid passport, health insurance, criminal background check.",
+    processing: "4–20 weeks depending on embassy workload.",
+    duration: "Typically 1–4 years, renewable while you hold a qualifying job.",
+    pathToPR: "Permanent residence in 21–33 months with B1 language, 5 years standard. EU mobility rights after 12 months (move to another EU state under simplified rules).",
+    family: "Spouse and minor children eligible for family reunification. Spouse usually gets unrestricted work rights. Reduced language requirements vs. national permits.",
+  },
+  national_work: {
+    income: "Varies widely by country and occupation; generally tied to national minimum wage or collective bargaining agreements.",
+    documents: "Signed employment contract, proof of qualifications, employer sponsorship/labor market test in many cases, passport, health coverage, police clearance.",
+    processing: "1–6 months depending on country.",
+    duration: "Usually 1–2 years initially, renewable as long as employment continues.",
+    pathToPR: "Permanent residence typically after 5 years of continuous legal residence.",
+    family: "Family reunification generally available once main holder meets minimum residency + income thresholds.",
+  },
+  nomad: {
+    income: "Typically €2,500–€3,500/month from foreign employers or clients. Spain: €2,849/mo. Portugal D8: €3,480/mo. Estonia: €4,500/mo.",
+    documents: "Proof of remote work (contracts, employer letter confirming remote work authorization), 6–12 months of bank statements, private health insurance, clean record, passport.",
+    processing: "30–90 days at most consulates.",
+    duration: "1–2 years initially, renewable up to 5 years in most countries.",
+    pathToPR: "Most DNVs count toward permanent residence (5 years typical). A few explicitly exclude DNV holders from PR — verify.",
+    family: "Spouse and dependent children included with higher income thresholds. Add ~75% of base for spouse, ~25% per child.",
+  },
+  freelance: {
+    income: "€24,000–€40,000/year typical. Must show stable self-employment income and, often, existing clients or business plan.",
+    documents: "Business plan or client list, financial projections, tax registration in home country, portfolio/qualifications, proof of accommodation, health insurance.",
+    processing: "2–6 months; varies significantly by country.",
+    duration: "1–3 years initially, renewable.",
+    pathToPR: "Permanent residence after 5 years in most EU states.",
+    family: "Family reunification available; income threshold rises with dependents.",
+  },
+  family: {
+    income: "Sponsor usually needs stable income equivalent to minimum wage or social assistance threshold, plus adequate housing.",
+    documents: "Marriage/birth certificate (apostilled & translated), sponsor's proof of legal residence, sponsor's income and housing proof, health insurance for family member.",
+    processing: "3–9 months; often the slowest category due to document verification.",
+    duration: "Usually matches the sponsor's residence permit, with independent renewal rights after 3–5 years.",
+    pathToPR: "Spouses of EU citizens can often apply for PR after 3 years; spouses of non-EU residents typically 5 years.",
+    family: "This visa IS the family path — spouse, registered partner, minor children, sometimes dependent parents.",
+  },
+  student: {
+    income: "Proof of sufficient funds for living costs, typically €6,000–€12,000/year in a blocked account or sponsor guarantee.",
+    documents: "Acceptance letter from recognized institution, proof of tuition payment, financial guarantee, accommodation, health insurance, language proficiency (if degree taught in local language).",
+    processing: "4–12 weeks.",
+    duration: "Duration of study, typically renewed annually.",
+    pathToPR: "Study years often count only partially (50%) toward the 5-year PR timeline. Post-study work permits available in most EU states (6–18 months to find qualifying employment).",
+    family: "Spouse/children reunification possible for degree-level students with adequate funds; typically not for short programs.",
+  },
+  jobseeker: {
+    income: "Proof of savings to cover 6–12 months of living expenses (usually €5,000–€15,000).",
+    documents: "University degree (recognized or evaluated), CV, proof of savings, health insurance, accommodation proof.",
+    processing: "4–12 weeks.",
+    duration: "6–12 months, non-renewable — must convert to a work permit if employment found.",
+    pathToPR: "No direct PR path; must convert to Blue Card or national work permit first.",
+    family: "Generally not available for dependents during the job search phase.",
+  },
+  retirement: {
+    income: "Stable passive income; Portugal D7: €920/mo; Spain NLV: €2,400/mo (400% IPREM); Greece FIP: €3,500/mo; Italy ERV: €31,000/yr.",
+    documents: "Proof of passive income (pension statements, dividend records, rental agreements, bank statements 6–12 months), private health insurance, criminal background check, proof of accommodation in country.",
+    processing: "2–6 months.",
+    duration: "1–2 years initially, renewable up to 5 years.",
+    pathToPR: "Permanent residence after 5 years of continuous residence in most countries.",
+    family: "Spouse and dependent children can be included; threshold usually +50% for spouse, +30% per child.",
+  },
+  golden: {
+    income: "Capital investment required, not income. Real estate, government funds, business creation, or donation options. Typical floor: €250,000–€500,000.",
+    documents: "Proof of source of funds, investment confirmation, clean criminal record, health insurance, passport. Anti-money-laundering checks are thorough.",
+    processing: "6–12 months typically; Malta MPRP 4–6 months.",
+    duration: "1–5 years initially; renewable while investment is maintained.",
+    pathToPR: "Most programs lead to PR in 5 years. Malta MPRP grants PR directly on approval.",
+    family: "Spouse, children (often including adult children if dependent), sometimes parents and siblings. Family inclusion is generally more generous than other visa types.",
+  },
+};
+
+const VISA_DETAILS = {
+  DE: {
+    bluecard: {
+      income: "€50,700/year gross (2026 standard). €45,934.20 for shortage occupations (IT, engineering, healthcare, STEM) and recent graduates (<3 years since degree).",
+      documents: "University degree (or 3+ years IT experience for IT specialists, no degree needed since 2025), employment contract ≥6 months, passport, health insurance, criminal background check.",
+      processing: "4–20 weeks at the German embassy or consulate. Faster via fast-track if employer is certified.",
+      duration: "Up to 4 years initially, renewable while employed.",
+      pathToPR: "Permanent settlement permit (Niederlassungserlaubnis) after 21 months with B1 German, or 27 months with A1. EU mobility rights after 12 months. Citizenship eligible after 5 years.",
+      family: "Spouse can join without German language skills and receives unrestricted right to work. Minor children included. Reduced language requirements vs. standard work permit.",
+    },
+    freelance: {
+      income: "No fixed minimum; must demonstrate viable self-employment with German clients or demonstrable local economic interest. Typical threshold: €9,000–€30,000+ annual profit depending on city.",
+      documents: "Business plan, CV, portfolio, 2+ letters of intent from potential German clients (for Freiberufler), Krankenversicherung (health insurance), Anmeldung (address registration), Steueridentifikationsnummer.",
+      processing: "2–4 months from within Germany. Apply at local Ausländerbehörde after entering on a visa or (for US citizens) visa-free and converting.",
+      duration: "Usually 1–3 years initially, renewable.",
+      pathToPR: "Permanent residence after 3 years if business is profitable, otherwise 5 years. Citizenship after 5 years of residence (down from 8 since 2024 reform).",
+      family: "Spouse and minor children via family reunification. Spouse needs A1 German in most cases (exceptions for highly qualified).",
+    },
+    national_work: {
+      income: "Fachkräfte (skilled workers): generally at prevailing wage, no fixed floor. Opportunity Card (Chancenkarte) job seeker requires points-based qualifying score.",
+      documents: "Recognized qualification (Anerkennung for regulated professions), employment contract or job offer, health insurance, housing proof.",
+      processing: "4–16 weeks.",
+      duration: "Up to 4 years, renewable.",
+      pathToPR: "PR after 4 years of legal employment (3 years with B1 German). Citizenship at 5 years.",
+      family: "Standard German family reunification rules apply.",
+    },
+  },
+  PT: {
+    retirement: {
+      income: "€920/month passive income (indexed to Portuguese minimum wage, 2026). +50% for spouse (€1,380 couple), +30% per child.",
+      documents: "6–12 months of bank statements showing income, rental contract or property deed in Portugal, NIF (Portuguese tax number), Portuguese bank account with €10,440+ balance, private health insurance, criminal background check (apostilled).",
+      processing: "2–6 months for the consular visa; then 6–9 months for AIMA residence card after arrival.",
+      duration: "Initial visa 4 months (enter and apply for residence permit). First residence card: 2 years. Renewed for 3-year periods.",
+      pathToPR: "Permanent residence or citizenship after 5 years. Must reside 16+ months within any 2-year period. US citizens can apply for Portuguese citizenship after 5 years (was 6; aligned in 2024 reform).",
+      family: "Spouse, minor children, dependent adult children in education, and dependent parents all eligible under family reunification.",
+    },
+    nomad: {
+      income: "€3,480/month (4× Portuguese minimum wage, 2026) from foreign-source remote work. Applies to employees of foreign companies and freelancers with foreign clients.",
+      documents: "Employment contract or client agreements showing remote work, 3 months of bank statements meeting threshold, proof of accommodation in Portugal, NIF, private health insurance, criminal record.",
+      processing: "2–4 months consular visa; then residence permit appointment with AIMA after arrival.",
+      duration: "Initial visa 4 months; residence permit 2 years, renewable for 3 years.",
+      pathToPR: "Permanent residence / citizenship after 5 years with 16+ months of physical presence per 2-year period.",
+      family: "Spouse, minor children, dependent adult children, dependent parents eligible.",
+    },
+    golden: {
+      income: "Post-2023 reform: €500,000 investment fund contribution, €500,000 research/arts donation, or €250,000 cultural heritage donation. Real estate is NO LONGER eligible.",
+      documents: "Proof of investment, source-of-funds documentation, criminal background check, health insurance, passport.",
+      processing: "8–14 months (longer since 2023 reform backlog).",
+      duration: "Residence card valid 2 years, renewable for 3-year periods. Only 7 days/year minimum physical presence required.",
+      pathToPR: "Permanent residence or citizenship after 5 years (this program has among the shortest physical-presence requirements in the EU).",
+      family: "Spouse, children, dependent parents, dependent siblings all eligible under one investment.",
+    },
+  },
+  ES: {
+    nomad: {
+      income: "€2,849/month gross (2026), tied to 200% of Spanish SMI. +75% for spouse (≈€1,069), +25% per child (≈€357).",
+      documents: "Employment contract or client agreements (company must have existed 1+ year, you must have worked there 3+ months), university degree OR 3+ years relevant experience, criminal background check, private health insurance meeting Spanish standards, proof of accommodation.",
+      processing: "2–4 months consular; faster (15–45 days) if applied from within Spain on a tourist Schengen stamp.",
+      duration: "1 year if applied via consulate; 3 years if applied from within Spain. Renewable for 2-year periods up to 5 years total.",
+      pathToPR: "Long-term residence after 5 years. Spanish citizenship typically after 10 years (2 years for Latin Americans, Portuguese, Filipinos, Equatorial Guineans, Sephardic Jews).",
+      family: "Spouse/registered partner and minor children eligible. US W-2 employees now accepted (as of 2025) though 1099/autónomo conversion still common.",
+    },
+    national_work: {
+      income: "Highly Qualified Professional (HQP) visa: €40,000+/year typical. Other work permits require labor market test and prevailing-wage offer.",
+      documents: "Job offer from Spanish employer with approved labor market test (or HQP exemption), recognized qualifications, social security enrollment, housing.",
+      processing: "3–6 months.",
+      duration: "1 year initially, then 2-year renewals.",
+      pathToPR: "PR after 5 years continuous residence. Citizenship at 10 years (2 years for select nationalities).",
+      family: "Family reunification after 1 year of legal residence in Spain.",
+    },
+    retirement: {
+      income: "Non-Lucrative Visa (NLV): €2,400/month (400% of IPREM, 2026), OR equivalent capital. +25% per dependent. No work permitted in Spain.",
+      documents: "Proof of passive income/savings, private health insurance covering Spain with no co-pay, criminal record, medical certificate, accommodation.",
+      processing: "1–3 months consular.",
+      duration: "1 year initially, renewable for 2-year periods.",
+      pathToPR: "PR at 5 years; citizenship at 10 years (2 for select nationalities).",
+      family: "Spouse and dependent children included; threshold +25% per person.",
+    },
+  },
+  NL: {
+    bluecard: {
+      income: "€5,688/month gross (2026, standard threshold) ≈ €68,260/year. €4,171/month for recent graduates (<1 year since degree) or under-30.",
+      documents: "Recognized bachelor's+ degree, employment contract with IND-recognized sponsor, passport, health insurance via Dutch system.",
+      processing: "2–4 weeks with recognized sponsor (faster than most EU countries).",
+      duration: "Up to 4 years, matching employment contract.",
+      pathToPR: "Permanent residence after 5 years; citizenship at 5 years with B1 Dutch (requires renouncing existing citizenship in most cases — Netherlands does not generally allow dual citizenship for naturalized citizens).",
+      family: "Spouse gets unrestricted work rights. Minor children included. Spouse income doesn't count toward threshold.",
+    },
+    freelance: {
+      income: "DAFT (Dutch-American Friendship Treaty) — open exclusively to US citizens. €4,500 minimum business investment (held in Dutch business bank account). No salary threshold but business must be viable.",
+      documents: "US passport, business registration with Kamer van Koophandel, Dutch business bank account with €4,500 deposit, business plan, health insurance, BSN (citizen service number).",
+      processing: "2–4 months.",
+      duration: "2 years initially, renewed for 5-year periods.",
+      pathToPR: "PR after 5 years; citizenship at 5 years (with the dual-citizenship caveat above).",
+      family: "Spouse and minor children can join. Spouse may work freely under family reunification.",
+    },
+  },
+  IE: {
+    national_work: {
+      income: "Critical Skills Employment Permit: €38,000/year (2026) for qualifying roles on the Critical Skills Occupations List; €64,000/year for other skilled roles. General Employment Permit: €34,000/year with labor market test.",
+      documents: "Job offer from Irish employer, qualifications, passport, medical insurance.",
+      processing: "8–12 weeks.",
+      duration: "2 years initially (Critical Skills), then Stamp 4 (effectively permanent) after 2 years.",
+      pathToPR: "Long-term residence (Stamp 4) after 2 years on Critical Skills Permit — among the fastest in Europe. Irish citizenship after 5 years of reckonable residence.",
+      family: "Spouse/partner of Critical Skills Permit holders can work without a separate permit (Stamp 1G). Immediate family reunification.",
+    },
+    retirement: {
+      income: "Stamp 0 (retirement): €50,000/year per person passive income OR significant lump sum (~€1M in readily available resources). Strict — Ireland is not a retirement-friendly destination.",
+      documents: "Proof of income/savings, private health insurance, accommodation, character references, medical assessment.",
+      processing: "6–12 months.",
+      duration: "1 year, renewable annually.",
+      pathToPR: "Stamp 0 does NOT lead to PR or citizenship, even after many years. It is a limited, renewable permission to reside.",
+      family: "Spouse can be included under separate Stamp 0 application with matching income.",
+    },
+  },
+  MT: {
+    golden: {
+      income: "Malta Permanent Residency Programme (MPRP): €150,000 government contribution + property purchase (€375,000+) OR rental (€14,000+/year for 5 years) + €50,000 charitable donation. Total cost: ~€550,000–€700,000 depending on route.",
+      documents: "Source-of-funds documentation (forensic due diligence is rigorous), property/lease agreement, criminal background check, health insurance, passport.",
+      processing: "4–6 months (among the fastest golden visa programs).",
+      duration: "Permanent residence granted directly on approval (not temporary like most programs).",
+      pathToPR: "PR is granted from day one. Citizenship path available via separate Exceptional Investment Naturalisation programme (much more expensive, ~€690,000+).",
+      family: "Spouse, children (including adult children up to 29 if dependent), parents, and grandparents of main applicant and spouse — broadest family inclusion in the EU.",
+    },
+  },
+  FR: {
+    bluecard: {
+      income: "€59,373/year gross (2026) — 1.5× the French reference average salary set by the August 2025 ministerial decree. Processing target reduced to 90 days under the 2025 reform.",
+      documents: "Recognised bachelor's+ degree OR 5+ years equivalent professional experience, signed employment contract (6+ months), passport, health coverage.",
+      processing: "Typically 8–12 weeks; 90-day processing target codified in 2025. Same-day validation possible if employer is certified.",
+      duration: "Up to 4 years under the 'Talent — EU Blue Card' permit, renewable while employed.",
+      pathToPR: "Permanent residence after 5 years of legal residence. French citizenship at 5 years (2 if graduated from a French university). Holders of a Blue Card from another EU state can apply in France within 1 month of arrival.",
+      family: "Spouse and minor children under simultaneous 'Talent — famille' application. Spouse gets unrestricted work rights. Recent reform allows family applications to be processed in parallel with the main applicant.",
+    },
+    national_work: {
+      income: "'Talent — Qualified Employee' permit: €39,582/year gross (2026), reduced by 8% in the August 2025 reform to improve accessibility. Company directors: €65,629+/year. No SMIC-based calculation — fixed reference salary.",
+      documents: "Master's degree or 5+ years equivalent experience, employment contract (permanent, or fixed-term of 3+ months), French employer with the role genuinely requiring the qualification.",
+      processing: "4–8 weeks through the France-Visas platform.",
+      duration: "Up to 4 years, renewable. A2 French proficiency required for renewal starting 2026.",
+      pathToPR: "Long-term residence after 5 years. Citizenship at 5 years standard; 2 years for graduates of French higher education.",
+      family: "'Talent — famille' accompanying visa for spouse and children. Spouse may work freely.",
+    },
+    freelance: {
+      income: "'Entrepreneur / Liberal Profession' residence permit: ~€23,000/year minimum (equivalent to SMIC); viable business plan required. Company directors: €65,629+/year under the Talent scheme.",
+      documents: "Business plan, proof of qualifications, financial projections, accommodation in France, health insurance.",
+      processing: "2–4 months.",
+      duration: "Up to 4 years, renewable.",
+      pathToPR: "Permanent residence after 5 years. Citizenship at 5 years standard.",
+      family: "Spouse and children eligible via 'Talent — famille' if applicant qualifies under the Talent scheme; otherwise standard family reunification (longer process).",
+    },
+    retirement: {
+      income: "Long-stay Visitor Visa (VLS-TS Visiteur): ~€1,800/month passive income OR €30,000+ in a foreign bank account. No work permitted in France — strictly for financially independent residents.",
+      documents: "Bank statements, pension documents, proof of accommodation in France (lease or property deed), private health insurance covering France, commitment letter stating you will not work.",
+      processing: "2–4 months.",
+      duration: "1 year initially, renewable. Multi-year card possible after 3 years.",
+      pathToPR: "Long-term residence at 5 years. Citizenship at 5 years (2 years if a French university graduate).",
+      family: "Spouse can obtain own Visitor Visa with matching income proof. Minor children eligible under family reunification after sponsor establishes 1+ year of residence.",
+    },
+  },
+  IT: {
+    nomad: {
+      income: "€28,000/year minimum from foreign sources (some consulates request more); €32,400/year commonly cited for comfortable approval. +20% for spouse, additional €6,200/year per dependent child. Plus €30,000+ savings typically required.",
+      documents: "University degree OR equivalent 6+ months relevant remote work experience, employment contract or client agreements (foreign-only), bank statements, private health insurance, accommodation in Italy, criminal record check.",
+      processing: "30–60 days at consulate; can take up to 120 days. After arrival, 'permesso di soggiorno' must be applied for within 8 working days.",
+      duration: "1 year initially, renewable for 2 additional years while requirements are maintained.",
+      pathToPR: "Counts toward permanent residence after 5 years if 183+ days/year physical presence is maintained. Italian citizenship possible after 10 years of legal residence.",
+      family: "Spouse and minor children via family reunification ('ricongiungimento familiare'). Income threshold rises per family member.",
+    },
+    retirement: {
+      income: "Elective Residency Visa: €32,000+/year per applicant in passive income (pensions, dividends, rental income, investments). +20% per dependent, +€6,200/year per child. Active work income (even remote) does NOT qualify — this is for the financially independent.",
+      documents: "Proof of passive income sources (pension statements, dividend records, rental contracts), 12-month lease agreement or property deed in Italy, private health insurance, criminal record, clean financial history.",
+      processing: "2–4 months consular. Convert to residence permit within 8 working days of arrival.",
+      duration: "1 year initially, renewable in 2-year increments.",
+      pathToPR: "Permanent residence at 5 years (183+ days/year presence). Italian citizenship at 10 years.",
+      family: "Spouse and dependent children can be included with higher income thresholds; each needs independent proof of means in many consular districts.",
+    },
+    golden: {
+      income: "Investor Visa: €250,000 in an Italian innovative startup, €500,000 in an Italian limited company, €2M in government bonds, OR €1M philanthropic donation. New 'flat tax' regime for high-net-worth individuals rose to €300,000/year in December 2025.",
+      documents: "Proof of investment readiness, source-of-funds documentation, anti-money-laundering clearance, criminal record, health insurance.",
+      processing: "30 days for nulla osta (approval); then apply for visa and residence permit.",
+      duration: "2 years initially, renewable for 3-year periods while investment is maintained.",
+      pathToPR: "Permanent residence at 5 years; no minimum stay required for visa maintenance (attractive for those seeking EU residency without relocating).",
+      family: "Spouse, minor children, dependent adult children, dependent parents — generous family inclusion.",
+    },
+    bluecard: {
+      income: "Approximately €26,000–€28,000/year gross (3× Italian minimum annual wage) — one of the lowest Blue Card thresholds in the EU, making Italy attractive for non-elite skilled migration.",
+      documents: "Recognised higher education qualification (3+ years), employment contract 6+ months, passport, health insurance.",
+      processing: "60–120 days.",
+      duration: "2 years or matching contract length, renewable.",
+      pathToPR: "PR at 5 years. Citizenship at 10 years (Italy's long path — among the slowest in the EU).",
+      family: "Spouse and children via simultaneous family application; spouse receives unrestricted work rights.",
+    },
+  },
+  GR: {
+    retirement: {
+      income: "Financially Independent Person (FIP) visa: €3,500/month in stable passive income (+20% for spouse = €4,200 couple, +15% per child). Alternatively: €126,000 lump-sum deposit covering 3 years. Savings alone generally not accepted without supporting passive income.",
+      documents: "Pension statements, bank account statements, investment income proof, rental agreements abroad, private health insurance, criminal record, proof of accommodation in Greece, clean financial history.",
+      processing: "Type D visa issued in ~10 days; residence permit processing up to 3 months after arrival.",
+      duration: "3 years initially (extended from 2 years in June 2024 reform), renewable.",
+      pathToPR: "Permanent residence after 5 years. Greek citizenship possible after 7 years. Requires 183+ days physical presence per year.",
+      family: "Spouse and dependent children under 21 eligible. Must meet the higher combined income threshold (+20% spouse, +15% per child).",
+    },
+    golden: {
+      income: "Real estate investment: €800,000 in Athens/Thessaloniki/popular islands (since January 2025 reform); €400,000 in other regions; €250,000 for property conversions (commercial→residential) or listed-building restorations. Minimum 120m² per property in high-cost zones.",
+      documents: "Property purchase contracts, notary deeds, proof of funds transfer (€250k+), source-of-funds documentation, criminal record, health insurance.",
+      processing: "1–2 months typical (streamlined online platform since 2022). Backlogs possible near investment-threshold deadlines.",
+      duration: "5-year renewable residence permit; NO physical presence requirement — you can keep the permit without living in Greece.",
+      pathToPR: "Permanent residence at 5 years (with physical presence). Citizenship at 7 years. Many Golden Visa holders never qualify for citizenship because they don't actually live in Greece.",
+      family: "Spouse, dependent children (under 21 can be extended to 24 if in full-time education), dependent parents of both applicant and spouse.",
+    },
+    nomad: {
+      income: "€3,500/month net from remote work (foreign employers or clients); +20% for spouse, +15% per child. Same threshold as FIP.",
+      documents: "Employment contract or client agreements with foreign entities, 6 months of bank statements, private health insurance, criminal record, accommodation in Greece.",
+      processing: "Approximately 10 days for visa; 2–3 months for residence permit after arrival.",
+      duration: "2 years initially, renewable.",
+      pathToPR: "Counts toward 5-year PR path if 183+ days/year physical presence is maintained. Special 50% income tax reduction for 7 years available under Greek non-dom regime.",
+      family: "Spouse and minor children eligible with higher income.",
+    },
+  },
+  CZ: {
+    freelance: {
+      income: "Žživno (Trade License) visa: CZK 156,500 (~€6,300) in a bank account as proof of funds. Ongoing income after arrival: ~CZK 20,000+/month typical; precise renewal threshold set by Ministry annually.",
+      documents: "Trade License (živnostenské oprávnění) from a Czech Trade Licence Office, bank letter showing CZK 156,500+, notarised lease agreement (minimum 1 year), criminal background check (apostilled + translated to Czech), health insurance, passport.",
+      processing: "60–120 days; official 90-day target. Applications must be lodged at a Czech consulate (some nationalities restricted to specific locations).",
+      duration: "12 months initially, extended by 24 months. Subsequent renewals via Ministry of Interior.",
+      pathToPR: "Permanent residence after 5 years of continuous legal residence. Czech citizenship after 10 years (5 PR + 5 more).",
+      family: "Spouse and dependent children can join through separate family reunification applications; must meet accommodation and income thresholds.",
+    },
+    nomad: {
+      income: "€2,800–€3,000/month (1.5× Czech average salary, ~CZK 69,836/month in 2026). Restricted to IT and marketing specialists from selected eligible countries (includes US, UK, Australia, Brazil, Israel, Mexico, Singapore, South Korea, Japan, New Zealand, Canada, Taiwan).",
+      documents: "University degree in IT/marketing OR 3+ years experience, Trade License (for freelancers) or foreign employer contract (for employees of companies with 50+ staff), criminal record, health insurance, accommodation.",
+      processing: "45–90 days.",
+      duration: "1 year initially, extendable to 2-year residence permit.",
+      pathToPR: "Can transition to standard long-term residence; counts toward 5-year PR path once converted. Czech citizenship at 10 years.",
+      family: "Spouse and children via Czech family reunification; not bundled with the main applicant's process.",
+    },
+    bluecard: {
+      income: "Czech Blue Card requires salary at 1.5× the Czech average gross wage — approximately CZK 70,000/month (€2,850/month, ~€34,200/year) in 2026.",
+      documents: "Recognised higher education qualification, employment contract 12+ months, passport, health insurance.",
+      processing: "Reduced standard processing times following the 2025 EU Blue Card reform; typically 60–90 days.",
+      duration: "2 years or contract length, renewable.",
+      pathToPR: "PR after 5 years (or 33 months with B1 Czech per 2025 reform). Citizenship at 10 years.",
+      family: "Spouse and children via simultaneous family processing; spouse receives work rights.",
+    },
+  },
+  EE: {
+    nomad: {
+      income: "€4,500/month gross (2026) — among the highest DNV thresholds in the EU. Must be sustained for 6 months preceding application. Work must be for foreign-registered employers, foreign-owned companies you run, OR foreign clients.",
+      documents: "Employment contract / business registration / client contracts (foreign only), 6 months of bank statements proving income, private health insurance, criminal record, accommodation, passport.",
+      processing: "Approximately 30 days — among the fastest in the EU.",
+      duration: "1 year, NOT renewable. 6-month cooling-off period required before re-application.",
+      pathToPR: "No direct path. The DNV is strictly temporary and does not count toward permanent residence or Estonian citizenship.",
+      family: "Spouse and dependent children can join under Estonia's standard family reunification rules; not automatic with DNV.",
+    },
+    bluecard: {
+      income: "Estonian Blue Card salary threshold: approximately €2,000–€2,500/month gross (1.5× Estonian average salary). Among the lowest Blue Card thresholds in the EU.",
+      documents: "Recognised university degree, employment contract 6+ months, employer sponsorship letter, passport, health insurance.",
+      processing: "Approximately 8 weeks.",
+      duration: "Up to 2 years initially; renewable. Multi-entry work/residence rights.",
+      pathToPR: "Long-term residence after 5 years with B1 Estonian language proficiency. Estonian citizenship at 8 years (5 TRP + 3 PR), also requires B1 Estonian and a civics exam.",
+      family: "Spouse and minor children via family reunification. Important: Estonia generally does not allow dual citizenship for naturalized citizens.",
+    },
+    freelance: {
+      income: "TRP for Enterprise: €65,000 investment into an Estonian company (one of the lowest investment thresholds in the EU). Alternative: Startup Visa (no minimum investment) if your startup is accepted by Startup Estonia.",
+      documents: "Business registration, investment proof, business plan, financial projections, health insurance, accommodation.",
+      processing: "Approximately 8 weeks (includes Startup Committee review for Startup Visa route).",
+      duration: "Up to 2 years initially, renewable while the business is active.",
+      pathToPR: "Long-term residence at 5 years with B1 Estonian. Citizenship at 8 years total. Note: Estonia's annual immigration quota (~1,300 permits) can fill; however, startup, IT, and top-specialist categories are exempt.",
+      family: "Family reunification for spouse and minor children.",
+    },
+    student: {
+      income: "Proof of financial means: €250–€300/month for living costs (€3,000–€3,600/year minimum), typically via blocked account deposit.",
+      documents: "Admission letter from recognised Estonian university, proof of tuition payment, financial guarantee, accommodation, health insurance.",
+      processing: "Approximately 2 months.",
+      duration: "Duration of study, typically renewed annually.",
+      pathToPR: "Study years count only 50% toward the 5-year PR timeline. Post-study work permit available for 9 months to find qualifying employment after graduation.",
+      family: "Spouse reunification possible for degree-level students with adequate funds; generally not for short programs.",
+    },
+  },
+};
+
+/* Lookup: returns country-specific details if available, else visa-type defaults */
+function getVisaDetails(countryCode, visaId) {
+  return VISA_DETAILS[countryCode]?.[visaId] || VISA_DETAILS_DEFAULTS[visaId] || null;
+}
+
 /* ---------- PRIORITIES ---------------------------------------------------- */
 const PRIORITIES = [
   { id: "affordability", label: "Affordability", desc: "Low cost of living and housing" },
@@ -256,7 +622,7 @@ const COUNTRIES = [
   { code:"CY", name:"Cyprus",         capital:"Nicosia",    flag:"🇨🇾", pop:1.3,  lang:"Greek, Turkish",               eurozone:true,  schengen:false, natYears:7,
     visas:["bluecard","national_work","nomad","family","student","retirement","golden"],
     s:{ affordability:60, safety:75, healthcare:70, english:82, jobs:60, family:72, climate:92, nature:68, culture:68, transit:55, international:70, citizenship:55 }},
-  { code:"CZ", name:"Czech Republic", capital:"Prague",     flag:"🇨🇿", pop:10.7, lang:"Czech",                        eurozone:false, schengen:true,  natYears:5,
+  { code:"CZ", name:"Czechia (Czech Republic)", capital:"Prague",     flag:"🇨🇿", pop:10.7, lang:"Czech",                        eurozone:false, schengen:true,  natYears:5,
     visas:["bluecard","national_work","freelance","nomad","family","student"],
     s:{ affordability:68, safety:78, healthcare:78, english:66, jobs:58, family:74, climate:60, nature:76, culture:84, transit:82, international:70, citizenship:70 }},
   { code:"DK", name:"Denmark",        capital:"Copenhagen", flag:"🇩🇰", pop:5.9,  lang:"Danish",                       eurozone:false, schengen:true,  natYears:9,
@@ -387,6 +753,7 @@ export default function MoveMeToEU() {
   const [shortlist, setShortlist] = useState([]);   // array of country codes, max 3
   const [comparing, setComparing] = useState(false);
   const [chartScope, setChartScope] = useState("all"); // "all" | "matches"
+  const [expandedPathways, setExpandedPathways] = useState({}); // { "DE:bluecard": true, ... }
 
   const mainRef = useRef(null);
   const [animateIn, setAnimateIn] = useState(true);
@@ -847,16 +1214,113 @@ export default function MoveMeToEU() {
 
         <div>
           <div style={{ fontSize:12, letterSpacing:"0.1em", textTransform:"uppercase", color:"#4A5578", fontWeight:600, marginBottom:8 }}>
-            Available pathways ({r.availableVisas.length})
+            Available pathways ({r.availableVisas.length}) — click for details
           </div>
           <div style={S.visaList}>
-            {r.availableVisas.map(v => (
-              <div key={v.id} style={S.visaItem}>
-                <span style={{ color:"#FFCC00", fontSize:18 }} aria-hidden="true">{v.icon}</span>
-                <span>{v.label}</span>
-              </div>
-            ))}
+            {r.availableVisas.map(v => {
+              const key = `${r.country.code}:${v.id}`;
+              const isExpanded = !!expandedPathways[key];
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setExpandedPathways(prev => ({ ...prev, [key]: !prev[key] }))}
+                  aria-expanded={isExpanded}
+                  aria-controls={`details-${key}`}
+                  style={{
+                    ...S.visaItem,
+                    cursor:"pointer",
+                    border: isExpanded ? "1px solid #003399" : "1px solid #E8DFC9",
+                    background: isExpanded ? "#E4ECFF" : "#FAF6EE",
+                    justifyContent:"space-between",
+                    textAlign:"left",
+                    fontFamily:"inherit",
+                    color:"inherit",
+                    width:"100%",
+                  }}>
+                  <span style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ color:"#FFCC00", fontSize:18 }} aria-hidden="true">{v.icon}</span>
+                    <span>{v.label}</span>
+                  </span>
+                  <span style={{ fontSize:14, color:"#4A5578", fontWeight:600 }} aria-hidden="true">
+                    {isExpanded ? "−" : "+"}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+
+          {/* Expanded detail panels — render after the grid so they span full width */}
+          {r.availableVisas.map(v => {
+            const key = `${r.country.code}:${v.id}`;
+            if (!expandedPathways[key]) return null;
+            const details = getVisaDetails(r.country.code, v.id);
+            const hasCountrySpecific = !!VISA_DETAILS[r.country.code]?.[v.id];
+            const portal = PORTALS[r.country.code];
+            if (!details) return null;
+            return (
+              <div
+                key={`panel-${key}`}
+                id={`details-${key}`}
+                role="region"
+                aria-label={`${v.label} details for ${r.country.name}`}
+                style={{
+                  marginTop:16, padding:"18px 22px",
+                  background:"#fff", border:"1px solid #003399", borderLeft:"4px solid #003399",
+                  borderRadius:4,
+                }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, flexWrap:"wrap" }}>
+                  <span style={{ color:"#FFCC00", fontSize:22 }} aria-hidden="true">{v.icon}</span>
+                  <h4 style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:20, fontWeight:600, color:"#0A1F4D", margin:0 }}>
+                    {v.label} — {r.country.name}
+                  </h4>
+                  {!hasCountrySpecific && (
+                    <span style={{ ...S.chip, ...S.chipGold, fontSize:10 }}
+                      title="Details below are general guidance for this visa type. Verify specifics at the official portal.">
+                      General guidance
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize:14, color:"#4A5578", margin:"0 0 16px", lineHeight:1.5 }}>{v.desc}</p>
+
+                <dl style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))", gap:"16px 24px", margin:0 }}>
+                  {[
+                    { label:"Income / investment threshold", key:"income" },
+                    { label:"Required documents", key:"documents" },
+                    { label:"Processing time", key:"processing" },
+                    { label:"Duration & renewal", key:"duration" },
+                    { label:"Path to permanent residence", key:"pathToPR" },
+                    { label:"Family member eligibility", key:"family" },
+                  ].map(field => details[field.key] && (
+                    <div key={field.key} style={{ margin:0 }}>
+                      <dt style={{ fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:"#4A5578", fontWeight:700, marginBottom:4 }}>
+                        {field.label}
+                      </dt>
+                      <dd style={{ fontSize:14, lineHeight:1.55, color:"#0A1F4D", margin:0 }}>
+                        {details[field.key]}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+
+                {portal && (
+                  <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid #EADFC2", display:"flex", flexWrap:"wrap", gap:10, alignItems:"center" }}>
+                    <span style={{ fontSize:12, color:"#4A5578" }}>
+                      Verify current details at:
+                    </span>
+                    <a href={portal.url} target="_blank" rel="noopener noreferrer"
+                      style={{ ...S.portalLink, padding:"8px 14px", fontSize:13 }}
+                      aria-label={`Open official immigration portal for ${r.country.name} in a new tab`}>
+                      <span aria-hidden="true">↗</span> {portal.agency}
+                    </a>
+                  </div>
+                )}
+                <p style={{ fontSize:11, color:"#4A5578", fontStyle:"italic", marginTop:12, marginBottom:0 }}>
+                  Data current as of early 2026. Immigration rules change frequently — always verify at the official portal before acting.
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ marginTop:16, display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(120px, 1fr))", gap:8 }}>
