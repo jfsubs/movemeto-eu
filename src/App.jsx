@@ -605,6 +605,51 @@ const PORTALS = {
   SE: { url: "https://www.migrationsverket.se/English/",                     agency: "Swedish Migration Agency (Migrationsverket)" },
 };
 
+/* ---------- FLAG COMPONENT ----------------------------------------------- */
+/* Renders country flags as Twemoji SVG images rather than Unicode emoji. On
+   Windows (Chrome/Edge), the OS doesn't ship color flag glyphs, so the native
+   emoji renders as empty boxes or monochrome letters. Twemoji is served from
+   jsDelivr as SVG, so flags render identically on every platform. */
+
+/* Convert a 2-letter ISO country code to the Twemoji flag filename.
+   Each regional indicator letter is at Unicode 0x1F1E6 + (char - 'A'). */
+function flagFilename(code) {
+  if (!code || code.length !== 2) return null;
+  const cc = code.toUpperCase();
+  const a = 0x1F1E6 + (cc.charCodeAt(0) - 65);
+  const b = 0x1F1E6 + (cc.charCodeAt(1) - 65);
+  return `${a.toString(16)}-${b.toString(16)}`;
+}
+
+const FLAG_CDN = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg";
+
+/* <Flag code="NL" alt="Netherlands" />
+   - For decorative use (country name adjacent), pass decorative={true} or
+     omit alt. The image will be marked aria-hidden.
+   - For standalone use (flag only, no name), pass a descriptive alt. */
+function Flag({ code, alt, size = 18, style, decorative = false }) {
+  const filename = flagFilename(code);
+  if (!filename) return null;
+  const isDecorative = decorative || !alt;
+  return (
+    <img
+      src={`${FLAG_CDN}/${filename}.svg`}
+      alt={isDecorative ? "" : alt}
+      aria-hidden={isDecorative ? "true" : undefined}
+      loading="lazy"
+      draggable="false"
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size * 0.75, // flags have 4:3 aspect ratio
+        verticalAlign: "-0.15em",
+        objectFit: "contain",
+        ...style,
+      }}
+    />
+  );
+}
+
 /* ---------- 27 EU MEMBER STATES ------------------------------------------ */
 const COUNTRIES = [
   { code:"AT", name:"Austria",        capital:"Vienna",     flag:"🇦🇹", pop:9.1,  lang:"German",                       eurozone:true,  schengen:true,  natYears:10,
@@ -1139,7 +1184,7 @@ export default function MoveMeToEU() {
         <header style={S.resultHead}>
           <div>
             <div style={S.resultTitle}>
-              <span aria-hidden="true" style={{ fontSize:32 }}>{r.country.flag}</span>
+              <Flag code={r.country.code} size={32} />
               {r.country.name}
             </div>
             <dl style={S.metaList}>
@@ -1396,7 +1441,7 @@ export default function MoveMeToEU() {
               {ineligible.map(r => (
                 <div key={r.country.code} style={{ ...S.resultRow, opacity:0.7 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
-                    <span aria-hidden="true" style={{ fontSize:22 }}>{r.country.flag}</span>
+                    <Flag code={r.country.code} size={22} />
                     <strong>{r.country.name}</strong>
                     {r.availableVisas.length === 0 && (
                       <span style={{ ...S.chip, ...S.chipRed }}>No matching pathway for your profile</span>
@@ -1441,7 +1486,7 @@ export default function MoveMeToEU() {
             {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:32 }} aria-hidden="true">{r.country.flag}</span>
+                  <Flag code={r.country.code} size={32} />
                   <div>
                     <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:22, fontWeight:600, color:"#0A1F4D" }}>{r.country.name}</div>
                     <div style={{ fontSize:12, color:"#4A5578" }}>{r.country.capital}</div>
@@ -1647,12 +1692,12 @@ export default function MoveMeToEU() {
     const euSaferRoads = roadRows.filter(x => x.rate < US_ROAD_DEATHS).length;
     const maxRoad = Math.max(US_ROAD_DEATHS, ...roadRows.map(x => x.rate));
 
-    const Bar = ({ label, rate, highlight, flag, max = maxRate, unitLabel = "homicides per 100,000 residents" }) => {
+    const Bar = ({ label, rate, highlight, code, max = maxRate, unitLabel = "homicides per 100,000 residents" }) => {
       const pct = (rate / max) * 100;
       return (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(120px, 160px) 1fr 56px", alignItems:"center", gap:12, padding:"4px 0" }}>
           <div style={{ fontSize:13, textAlign:"right", color: highlight ? "#0A1F4D" : "#4A5578", fontWeight: highlight ? 700 : 500 }}>
-            {flag && <span aria-hidden="true" style={{ marginRight:6 }}>{flag}</span>}
+            {code && <span style={{ marginRight:6, display:"inline-block" }}><Flag code={code} size={18} /></span>}
             {label}
           </div>
           <div style={{ background:"#F3EBDA", height:22, borderRadius:2, position:"relative", overflow:"hidden" }}>
@@ -1738,7 +1783,7 @@ export default function MoveMeToEU() {
           <p style={{ fontSize:16, lineHeight:1.6, color:"#0A1F4D", margin:0 }}>
             In <strong>{userState}</strong>, the homicide rate is{" "}
             <strong style={{ color:"#8C1F1F" }}>{state.homicide.toFixed(1)} per 100,000</strong>.{" "}
-            In <strong><span aria-hidden="true">{safestEU.country.flag}</span> {safestEU.country.name}</strong>, it's{" "}
+            In <strong><Flag code={safestEU.country.code} size={16} /> {safestEU.country.name}</strong>, it's{" "}
             <strong style={{ color:"#1F5D1F" }}>{safestEU.homicide.toFixed(1)} per 100,000</strong>.{" "}
             That means a resident of {userState} is statistically{" "}
             <strong style={{ color:"#7A5C00" }}>{vsSafest}× more likely</strong>{" "}
@@ -1777,8 +1822,8 @@ export default function MoveMeToEU() {
               {safestEU.homicide.toFixed(1)} – {leastSafeEU.homicide.toFixed(1)}
             </div>
             <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
-              <span aria-hidden="true">{safestEU.country.flag}</span> {safestEU.country.name} to{" "}
-              <span aria-hidden="true">{leastSafeEU.country.flag}</span> {leastSafeEU.country.name}.{" "}
+              <Flag code={safestEU.country.code} size={14} /> {safestEU.country.name} to{" "}
+              <Flag code={leastSafeEU.country.code} size={14} /> {leastSafeEU.country.name}.{" "}
               {userState}: <strong>{state.homicide.toFixed(1)}</strong>
             </div>
           </div>
@@ -1831,7 +1876,7 @@ export default function MoveMeToEU() {
               label={userState}
               rate={state.homicide}
               highlight={true}
-              flag="🇺🇸"
+              code="US"
             />
             <div style={{ borderBottom:"1px dashed #CEC2A0", margin:"10px 0" }} />
             {chartRows.length === 0 ? (
@@ -1843,7 +1888,7 @@ export default function MoveMeToEU() {
                 key={x.country.code}
                 label={x.country.name}
                 rate={x.homicide}
-                flag={x.country.flag}
+                code={x.country.code}
               />
             ))}
           </div>
@@ -1879,7 +1924,7 @@ export default function MoveMeToEU() {
                 {/* Anchor row: user's state */}
                 <tr style={{ borderBottom:"2px solid #FFCC00", background:"#FFFBEB" }}>
                   <th scope="row" style={{ textAlign:"left", padding:"12px 14px", fontWeight:700 }}>
-                    <span aria-hidden="true" style={{ marginRight:6 }}>🇺🇸</span>{userState} <span style={{ fontWeight:500, color:"#4A5578", fontSize:12 }}>(your state)</span>
+                    <span style={{ marginRight:6 }}><Flag code="US" size={16} /></span>{userState} <span style={{ fontWeight:500, color:"#4A5578", fontSize:12 }}>(your state)</span>
                   </th>
                   <td style={{ textAlign:"right", padding:"12px 14px", fontWeight:700, fontFamily:'"Fraunces", Georgia, serif', fontSize:16 }}>
                     {state.homicide.toFixed(1)}
@@ -1916,7 +1961,7 @@ export default function MoveMeToEU() {
                   return (
                     <tr key={x.country.code} style={{ borderBottom:"1px solid #EADFC2" }}>
                       <th scope="row" style={{ textAlign:"left", padding:"12px 14px", fontWeight:500 }}>
-                        <span aria-hidden="true" style={{ marginRight:6 }}>{x.country.flag}</span>{x.country.name}
+                        <span style={{ marginRight:6 }}><Flag code={x.country.code} size={16} /></span>{x.country.name}
                       </th>
                       <td style={{ textAlign:"right", padding:"12px 14px", fontFamily:'"Fraunces", Georgia, serif', fontSize:16, fontWeight:500 }}>
                         {x.homicide.toFixed(1)}
@@ -1982,8 +2027,8 @@ export default function MoveMeToEU() {
               </div>
               <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
                 US vs EU average. {roadVsSafest}× vs{" "}
-                <span aria-hidden="true">{safestRoad.country.flag}</span> {safestRoad.country.name}/
-                <span aria-hidden="true">{roadRows[1]?.country.flag}</span> {roadRows[1]?.country.name} (safest).
+                <Flag code={safestRoad.country.code} size={14} /> {safestRoad.country.name}/
+                <Flag code={roadRows[1]?.country.code} size={14} /> {roadRows[1]?.country.name} (safest).
               </div>
             </div>
           </div>
@@ -1994,7 +2039,7 @@ export default function MoveMeToEU() {
               label="United States"
               rate={US_ROAD_DEATHS}
               highlight={true}
-              flag="🇺🇸"
+              code="US"
               max={maxRoad}
               unitLabel="road deaths per 100,000 residents"
             />
@@ -2004,7 +2049,7 @@ export default function MoveMeToEU() {
                 key={x.country.code}
                 label={x.country.name}
                 rate={x.rate}
-                flag={x.country.flag}
+                code={x.country.code}
                 max={maxRoad}
                 unitLabel="road deaths per 100,000 residents"
               />
@@ -2081,7 +2126,7 @@ export default function MoveMeToEU() {
                 </tr>
               </thead>
               <tbody>
-                {[...qolRows, { country:{ code:"US", name:"United States", flag:"🇺🇸" }, ...usQoL, isUS:true }]
+                {[...qolRows, { country:{ code:"US", name:"United States" }, ...usQoL, isUS:true }]
                   .sort((a, b) => a.overallRank - b.overallRank)
                   .map(row => {
                     const isUS = row.country.code === "US";
@@ -2097,7 +2142,7 @@ export default function MoveMeToEU() {
                           #{row.overallRank}
                         </td>
                         <th scope="row" style={{ textAlign:"left", padding:"10px 12px", fontWeight: isUS ? 700 : 500 }}>
-                          <span aria-hidden="true" style={{ marginRight:6 }}>{row.country.flag}</span>{row.country.name}
+                          <span style={{ marginRight:6 }}><Flag code={row.country.code} size={14} /></span>{row.country.name}
                         </th>
                         <td style={{ textAlign:"right", padding:"10px 12px", fontWeight: isUS ? 700 : 600, fontFamily:'"Fraunces", Georgia, serif', fontSize:15 }}>
                           {row.avgRank.toFixed(2)}
@@ -2293,8 +2338,8 @@ export default function MoveMeToEU() {
           role="region"
           aria-label="Country comparison tray"
           aria-live="polite">
-          <span style={S.floatingFlags} aria-hidden="true">
-            {shortlist.map(code => COUNTRIES.find(c => c.code === code)?.flag)}
+          <span style={{ ...S.floatingFlags, display:"inline-flex", alignItems:"center", gap:6 }} aria-hidden="true">
+            {shortlist.map(code => <Flag key={code} code={code} size={20} />)}
           </span>
           <span style={{ fontSize:14, fontWeight:600 }} aria-live="polite">
             {shortlist.length} of 3 countries shortlisted
