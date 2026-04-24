@@ -805,7 +805,8 @@ export default function MoveMeToEU() {
   useEffect(() => {
     setAnimateIn(false);
     requestAnimationFrame(() => setAnimateIn(true));
-    mainRef.current?.focus();
+    window.scrollTo(0, 0);
+    mainRef.current?.focus({ preventScroll: true });
   }, [step, comparing, view]);
 
   /* ---------- Shortlist helpers ---------- */
