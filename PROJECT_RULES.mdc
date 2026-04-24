@@ -1,0 +1,240 @@
+# Move Me To EU — Project Rules & Context
+
+This file exists so any Claude session can jump into this project without re-deriving decisions, rediscovering gotchas, or repeating conversations. Treat it as the authoritative source of project context. Update it when decisions change.
+
+---
+
+## Project identity
+
+**Product:** Move Me To EU — a React/Vite single-page tool that matches users to EU countries based on visa pathway eligibility, priority weightings, and side-by-side comparisons across 27 EU member states. Sibling product to mywiserelocation.com / mywisetravel.com.
+
+**Live URL:** https://movemeto.eu
+**Temporary URL:** https://movemeto-eu.onrender.com (disable once apex is live)
+**GitHub:** https://github.com/jfsubs/movemeto-eu
+**Owner:** Justin (jfsubs on GitHub), dual US/German citizen, Arlington VA, planning family relocation to Germany (Aachen top candidate)
+
+**Product philosophy:** Honest data over marketing claims. Every figure shown is researched from official sources with a "verify at the portal before acting" disclaimer. The tool is not legal advice; it's a first-cut sorting mechanism for people who don't know where to start.
+
+---
+
+## Stack & deployment (non-negotiable facts)
+
+- **Frontend:** React 18 + Vite, single `src/MoveMeToEU.jsx` file (~2,370 lines). Self-styled — no CSS framework, no component library. Styled with inline `style={}` objects and one small `<style>{css}</style>` block for pseudo-classes like `:focus-visible` and the skip link.
+- **Fonts:** Google Fonts — `Fraunces` (serif, headings) + `Manrope` (sans, body).
+- **Colors:** EU blue `#003399`, EU gold `#FFCC00`, cream `#FAF6EE` page background, primary text `#0A1F4D`, secondary `#4A5578`. Never `#8A94AD` — that failed WCAG AA and is now removed.
+- **Hosting:** Render static site (auto-deploys on every push to `main`).
+- **DNS:** Joker.com, configured with:
+  - `movemeto.eu` → **A record** → `216.24.57.1` (NOT an ALIAS — see decision below)
+  - `www.movemeto.eu` → **CNAME** → `movemeto-eu.onrender.com`
+- **Flag rendering:** Twemoji SVG via jsDelivr CDN (`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/`). Never use Unicode flag emoji directly — they render as empty boxes on Windows Chrome/Edge.
+
+### Local development — the OneDrive quirk
+
+Justin's Windows Desktop is OneDrive-synced, which means the real path is `C:\Users\justi\OneDrive\Desktop\`, not `C:\Users\justi\Desktop\`. PowerShell commands must use the environment-aware path:
+
+```powershell
+cd "$([Environment]::GetFolderPath('Desktop'))\movemeto-eu"
+```
+
+This also means `node_modules` should be excluded from OneDrive sync — it's been configured. Don't suggest commands that assume a non-OneDrive Desktop.
+
+### Standard update workflow
+
+Every iteration follows this pattern:
+
+```powershell
+cd "$([Environment]::GetFolderPath('Desktop'))\movemeto-eu"
+Move-Item -Force "$env:USERPROFILE\Downloads\MoveMeToEU.jsx" ".\src\MoveMeToEU.jsx"
+git add . ; git commit -m "..." ; git push
+```
+
+Render auto-deploys in 2–3 minutes. PowerShell uses `;` to chain, not `&&`.
+
+---
+
+## Architectural decisions (do not re-litigate)
+
+These were debated and settled. If revisiting, check if the original reason still applies.
+
+### Scoring algorithm: non-linear weight curve with bonus/penalty
+
+The match score is **not** a flat weighted average. History: the first version bunched every country into 60–80, making the tool useless for differentiation. The current algorithm:
+
+1. Zero-weight priorities are excluded entirely (not averaged with others)
+2. Weight contribution is `w²` (weight 5 counts 2.8× more than weight 3)
+3. Raw weighted average then passed through a spreading curve that pushes <50 down and >70 up
+4. +0.5 bonus per priority weighted ≥4 scoring ≥85; +1.5 per priority weighted 5 scoring ≥90
+5. −1 penalty per priority weighted ≥4 scoring ≤40; −3 per priority weighted 5 scoring ≤30
+6. Final clamped to 0–100
+
+Result: country scores now range 38–99 depending on who's asking. Bulgaria scores 87 for budget retirees, 46 for career families — that's the point.
+
+Related: the "strong fit / weak fit" labels below the score surface the bonus/penalty to the user for transparency.
+
+### Safety priority = weighted blend, not a single metric
+
+`priorityValue(country, "safety")` blends three sources:
+
+- Homicide rate → score (45%)
+- Road fatality rate → score (25%)
+- Institutional baseline (political stability, trust in institutions) (30%)
+
+Don't collapse this back to a single metric. The blend is what makes countries like France (low homicide, higher civil unrest) and Austria (strong on both) score differently rather than collapsing into the same bucket.
+
+### Quality of Life as a separate priority
+
+Added after user research (your CSV). It's a 13th priority (the other 12 being affordability, safety, etc.), sourced from a blended rank across HDI, OECD Better Life, Numbeo, Social Progress Imperative, Good Country Index, and Happy Planet. The overall rank drives `priorityValue(country, "qualityOfLife")`.
+
+### Why EU page structure
+
+Three sections, in this order, each with the same pattern (3-card hero + chart/table + source note):
+
+1. **Personal safety (homicide)** — the one crime metric with consistent US/EU definitions
+2. **Road fatalities** — because driving is the everyday danger Americans underestimate
+3. **Quality of life** — the broad-spectrum index average
+
+The original Why EU had a peer-relative tier table (Low/Moderate/High). That was removed because it misled cross-border comparisons — "Moderate" in one peer group isn't comparable to "Moderate" in another. Don't reintroduce tier tables.
+
+### DNS: A record, not ALIAS
+
+Joker supports ALIAS records at the apex, but we use an A record (`216.24.57.1`) instead. Reasons:
+
+- ALIAS is incompatible with DNSSEC at Joker (their docs confirm)
+- Render's static-site IP is stable and documented; they don't rotate casually
+- A records work universally and are easier to debug with `nslookup`/`dig`
+- If Render ever changes IPs (years away, probably), updating an A record takes 2 minutes
+
+Don't switch to ALIAS unless a specific future change makes A record impractical.
+
+### Flags: Twemoji SVG, not Unicode emoji
+
+Windows Chrome/Edge don't render color flag emoji. Twemoji SVGs render identically on every OS. See the `<Flag>` component — takes a 2-letter ISO code, generates the Twemoji filename via the regional-indicator unicode math, renders as `<img>` with lazy loading. Don't use `{country.flag}` Unicode strings anywhere user-visible. The `flag:"🇩🇪"` properties in the `COUNTRIES` array are dead data, kept only as fallback metadata.
+
+### Expand-in-place visa details, not modal
+
+Each pathway tile on a country card is a button that expands a detail panel below. Not a modal, not a tooltip, not a separate route. Users can see multiple pathways side-by-side by expanding more than one. Detail panels use 6-field `<dl>` layout: Income, Documents, Processing, Duration, Path to PR, Family.
+
+---
+
+## Data conventions
+
+### `VISA_DETAILS` structure
+
+Country-specific researched data lives in the `VISA_DETAILS` object keyed by `[countryCode][visaId]`. Default guidance for each visa type lives in `VISA_DETAILS_DEFAULTS`. The `getVisaDetails()` lookup prefers country-specific; falls back to defaults.
+
+**Countries with researched entries (as of April 2026):** DE, PT, ES, NL, IE, MT, FR, IT, GR, CZ, EE (11 of 27).
+
+**Fallback countries (show "General guidance" amber chip):** AT, BE, BG, HR, CY, DK, FI, HU, LV, LT, LU, PL, RO, SK, SI, SE (16 of 27).
+
+When a user requests new country data, research via web search of official portals + at least one secondary source (Fragomen, Jobbatical, CitizenRemote, etc.). Never fabricate specific thresholds — if data isn't found, use the default.
+
+### Data freshness
+
+All figures labeled "as of early 2026" with explicit "verify at official portal" disclaimers. Immigration rules change quarterly. Expect a refresh pass at least annually, ideally triggered by a country's major reform (e.g., when Germany Blue Card thresholds reset each January).
+
+### Czech Republic / Czechia naming
+
+The country is labeled `"Czechia (Czech Republic)"` to match both the country's formal short-form preference and the name Americans recognize. Don't shorten to just "Czechia" — users searching for "Czech Republic" need the parenthetical match.
+
+---
+
+## Accessibility commitments (508 / WCAG 2.1 AA)
+
+A full 508 compliance pass was completed. The tool is AA-compliant. When editing, maintain these:
+
+- **Contrast:** All text combos verified ≥ 4.5:1. Never use `#8A94AD` (2.82:1 on cream background — fails).
+- **ARIA patterns:** Use `aria-pressed` toggles, not `role="radio"` (which requires arrow-key nav we don't implement). Use `role="group"` for toggle collections, not `role="radiogroup"`.
+- **Hover-only info banned:** Every `title` tooltip must also have an `aria-label` with the same information. Don't introduce a tooltip without a screen-reader equivalent.
+- **Heading hierarchy:** h1 (site) → h2 (page) → h3 (section) → h4 (subsection). Don't skip levels.
+- **Flags in context:** When a country name is adjacent, the `<Flag>` component is decorative-by-default (no alt, `aria-hidden`). When a flag stands alone, pass an `alt` prop.
+- **Overflow regions are keyboard-scrollable:** `tabIndex={0}` + `role="region"` + descriptive `aria-label` on every horizontally-scrolling container.
+- **Live regions:** The floating comparison tray uses `aria-live="polite"` so state changes announce.
+- **Sliders have `aria-valuetext`:** Descriptive ("3 of 5 — moderate"), not just numeric.
+
+### Skip link
+
+The skip link uses CSS `:focus` pseudo-class in a `<style>` block, not inline `onFocus`/`onBlur` handlers. Don't refactor it back to inline handlers.
+
+### Language attribute
+
+Set in `index.html` as `<html lang="en">`. It's not settable from inside the React component, so don't try.
+
+---
+
+## What NOT to do
+
+Decisions that have been tried and rejected, or suggestions that waste time:
+
+1. **Don't introduce a UI framework.** The app is deliberately framework-free. Adding Tailwind/MUI/Chakra would require a full restyle for zero user benefit.
+2. **Don't use Unicode flag emoji.** Use `<Flag code="XX" />`. The emoji fails on Windows browsers.
+3. **Don't suggest ALIAS records at Joker.** A records are the decided path.
+4. **Don't flat-average the match score.** The non-linear + bonus/penalty algorithm is deliberate.
+5. **Don't use emoji in the tool outside of flags.** Icons for visas (◆ ● ◇ ◈ ♥ ✦ ◎ ☼ ★) are Unicode geometric symbols, not emoji — they render consistently everywhere.
+6. **Don't create separate page routes.** Everything is a view toggle inside the single-page app. Adding React Router would require Render rewrite rules and complicate deployment for no benefit.
+7. **Don't add tier labels to cross-border data** (Low/Moderate/High on homicide, etc.). Peer-relative tiers mislead across borders.
+8. **Don't include localStorage/sessionStorage.** Not needed; state is intentionally per-session.
+9. **Don't scaffold npm scripts for production tests** (Jest, Vitest, etc.). If adding tests becomes needed, ask first — the project deliberately ships without a test harness to keep the iteration loop fast.
+10. **Don't propose dark mode.** Not in scope.
+
+---
+
+## Future work already scoped (pick up from here)
+
+Things mentioned in prior conversations but not yet built:
+
+- **Expand VISA_DETAILS to remaining 16 countries.** Next priorities based on US-American relocation volume: AT, BE, DK, FI, LU, SE. After that: PL, HU, HR, SK, SI. Last: BG, CY, LV, LT, RO.
+- **Soft-launch vs SEO-discoverable decision.** Add `<meta name="robots" content="noindex, nofollow">` if soft launch is desired; currently indexable by default.
+- **OG image.** 1200×630px link-preview image referenced in `index.html` but not yet created. Design should use EU flag backdrop + "Move Me To EU" wordmark + tagline.
+- **sitemap.xml and robots.txt in `public/`.** Templates exist in `DEPLOYMENT_GUIDE.md`.
+- **Disable the onrender.com subdomain.** After movemeto.eu is fully live, toggle Render Subdomain to Disabled in Render settings to avoid duplicate-content SEO issues.
+- **Mobile testing of expand panels.** The visa detail `<dl>` grid may need narrow-width adjustments. Not yet tested on phone.
+- **City-level data.** Justin has mentioned this as an eventual goal — neighborhood-level scoring (Stadtfinder is a related tool he built separately for Aachen).
+- **VISA_DETAILS as JSON.** Moving country-specific data out of the component into a separate JSON file would make quarterly refreshes less error-prone. Not urgent.
+- **Annual data-freshness review.** Schedule for each January when most EU states update minimum-wage-indexed thresholds.
+
+---
+
+## How to iterate (the short version)
+
+1. Justin describes a change in chat with Claude
+2. Claude edits `MoveMeToEU.jsx` and delivers via downloadable file
+3. Justin runs the standard PowerShell workflow (OneDrive path, Move-Item, git push)
+4. Render auto-deploys
+5. Justin verifies at movemeto.eu
+
+No local branching, no PRs, no code review. The project is intentionally low-ceremony.
+
+**File integrity verification after every major edit:** Confirm braces balance and the file ends with `export default function MoveMeToEU() {...}` closing brace at the last line. The sanity-check script:
+
+```javascript
+const code = fs.readFileSync('MoveMeToEU.jsx', 'utf8');
+const count = (c) => (code.match(new RegExp('\\' + c, 'g')) || []).length;
+console.log('lines:', code.split('\n').length);
+console.log('braces:', count('{'), '/', count('}'));
+console.log('brackets:', count('['), '/', count(']'));
+```
+
+---
+
+## Context for the owner
+
+Justin's day job is in Arlington County government (CFCA president, active on transportation policy). He's building this tool as both a personal relocation planning aid and a potential commercial product (relocation advisory service targeting Americans moving to the EU). The tool is in the same portfolio as:
+
+- **Stadtfinder** — neighborhood choropleth mapper for Aachen
+- **My Wise Travel / mywisetravel.com** — multi-city travel planning app
+- **EU Product Finder** — German/EU product sourcing tool
+- **Partei·Kompass** — political orientation tool
+
+Design and writing voice should reflect:
+
+- Dry humor, intellectually honest, no corporate marketing-speak
+- Comfortable with nuance; don't oversimplify contested topics
+- Assume the reader is a capable adult making a real life decision
+- Verify claims; say "I don't know" or "verify at source" when appropriate
+- Treat immigration as the genuinely high-stakes decision it is, not a product to be sold
+
+When uncertain about tone, err toward the tone of *The Economist* or a thoughtful expat blog — informed, direct, respectful of the reader's intelligence.
+
+---
+
+*Last updated: April 2026. Update this file when architectural decisions change.*
