@@ -50,6 +50,16 @@ git add . ; git commit -m "..." ; git push
 
 Render auto-deploys in 2–3 minutes. PowerShell uses `;` to chain, not `&&`.
 
+**Claude must include a ready-to-paste PowerShell block with every `MoveMeToEU.jsx` delivery.** The commit message must be filled in to summarize the change — never left as `"..."`. Use a short imperative sentence (≤72 chars ideal), e.g. `"Reorder Why EU sections: QoL first, then road, then homicide"` or `"Scroll to top on step/view transitions"`. No PR, no branch — push directly to `main`. Example of a correctly filled-in delivery block:
+
+```powershell
+cd "$([Environment]::GetFolderPath('Desktop'))\movemeto-eu"
+Move-Item -Force "$env:USERPROFILE\Downloads\MoveMeToEU.jsx" ".\src\MoveMeToEU.jsx"
+git add . ; git commit -m "Reorder Why EU sections: QoL first, then road, then homicide" ; git push
+```
+
+The same pattern applies to non-JSX deliverables that belong in the repo (e.g. `PROJECT_RULES.mdc`, `public/` assets) — adjust the `Move-Item` destination to the correct path in the repo. Include the block in the chat response, not just in the delivered file.
+
 ---
 
 ## Architectural decisions (do not re-litigate)
@@ -89,9 +99,13 @@ Added after user research (your CSV). It's a 13th priority (the other 12 being a
 
 Three sections, in this order, each with the same pattern (3-card hero + chart/table + source note):
 
-1. **Personal safety (homicide)** — the one crime metric with consistent US/EU definitions
-2. **Road fatalities** — because driving is the everyday danger Americans underestimate
-3. **Quality of life** — the broad-spectrum index average
+1. **Quality of life** — the broad-spectrum index average, leads the page as the high-level framing
+2. **Road fatalities** — the everyday danger Americans underestimate
+3. **Personal safety (homicide)** — the one crime metric with consistent US/EU definitions
+
+The order was flipped from safety-first to QoL-first in April 2026. Leading with homicide read as fearmongering before readers had seen the broader quality-of-life picture; the QoL section now sets context and the two safety sections drill down. The lede paragraph and the methodology `<details>` paragraphs follow the same QoL → Road → Homicide order as the sections.
+
+Only the first section on the page (QoL) omits the top divider (`paddingTop:32 / borderTop:"2px solid #EADFC2"`); the other two carry it. The homicide block is wrapped in its own `<section aria-labelledby="homicide-h">` so it matches the structural pattern of the other two (it was originally bare siblings because it didn't need a top divider when it led the page).
 
 The original Why EU had a peer-relative tier table (Low/Moderate/High). That was removed because it misled cross-border comparisons — "Moderate" in one peer group isn't comparable to "Moderate" in another. Don't reintroduce tier tables.
 
@@ -197,8 +211,8 @@ Things mentioned in prior conversations but not yet built:
 ## How to iterate (the short version)
 
 1. Justin describes a change in chat with Claude
-2. Claude edits `MoveMeToEU.jsx` and delivers via downloadable file
-3. Justin runs the standard PowerShell workflow (OneDrive path, Move-Item, git push)
+2. Claude edits `MoveMeToEU.jsx` and delivers via downloadable file, **and includes the ready-to-paste PowerShell workflow block in the chat response with the commit message filled in** (see "Standard update workflow")
+3. Justin runs the PowerShell block (OneDrive path, Move-Item, git push)
 4. Render auto-deploys
 5. Justin verifies at movemeto.eu
 
@@ -237,4 +251,4 @@ When uncertain about tone, err toward the tone of *The Economist* or a thoughtfu
 
 ---
 
-*Last updated: April 2026. Update this file when architectural decisions change.*
+*Last updated: April 24, 2026. Update this file when architectural decisions change.*

@@ -1732,7 +1732,7 @@ export default function MoveMeToEU() {
         <h2 style={S.h2}>Why move to the EU?</h2>
         <p style={S.lede}>
           Some of the clearest differences between life in the United States and life in the European Union
-          show up in daily safety, traffic deaths, and broader quality of life. Choose your US state to see
+          show up in broad quality of life, traffic deaths, and day-to-day safety. Choose your US state to see
           how it compares to the 27 EU member states across all three dimensions.
         </p>
 
@@ -1746,8 +1746,187 @@ export default function MoveMeToEU() {
           </div>
         </div>
 
+        {/* ================= QUALITY OF LIFE ================= */}
+        <section aria-labelledby="qol-h" style={{ marginBottom:48 }}>
+          <h3 id="qol-h" style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D" }}>
+            Quality of life: where the US actually ranks
+          </h3>
+          <p style={{ fontSize:14, color:"#4A5578", marginBottom:24, maxWidth:720, lineHeight:1.55 }}>
+            Across six independent global quality-of-life indices — HDI, the OECD Better Life Index, Numbeo,
+            Social Progress, Good Country, and the Happy Planet Index — the United States ranks{" "}
+            <strong>#{usQoL.overallRank} out of 28</strong>{" "}
+            (the 27 EU member states plus the US), with an average rank of{" "}
+            <strong>{usQoL.avgRank.toFixed(1)}</strong>.
+          </p>
+
+          {/* QoL hero stats */}
+          <div style={{
+            display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16, marginBottom:32,
+          }}>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #003399" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>US overall QoL rank</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#003399", lineHeight:1 }}>
+                #{usQoL.overallRank}<span style={{ fontSize:24, color:"#4A5578" }}>/28</span>
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>across the US and the EU 27</div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #1F5D1F" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>EU countries ranked higher</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#1F5D1F", lineHeight:1 }}>
+                {euQolBetter}<span style={{ fontSize:24, color:"#4A5578" }}>/27</span>
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                score better than the US on the combined index
+              </div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #FFCC00", background:"#FFFBEB" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>EU countries ranked lower</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#7A5C00", lineHeight:1 }}>
+                {euQolWorse}<span style={{ fontSize:24, color:"#4A5578" }}>/27</span>
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                score worse than the US on the combined index
+              </div>
+            </div>
+          </div>
+
+          {/* QoL comparison table */}
+          <div style={{ overflowX:"auto", background:"#fff", border:"1px solid #E8DFC9", borderRadius:4 }}
+            role="region" aria-label="Quality of life rankings table, scroll horizontally if needed"
+            tabIndex={0}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+              <caption className="sr-only">Quality of life index rankings: US vs each EU country, lower is better</caption>
+              <thead>
+                <tr style={{ background:"#F3EBDA", borderBottom:"2px solid #003399" }}>
+                  <th scope="col" style={{ textAlign:"left", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }}><span aria-hidden="true">#</span><span className="sr-only">Overall rank</span></th>
+                  <th scope="col" style={{ textAlign:"left", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }}>Country</th>
+                  <th scope="col" style={{ textAlign:"right", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }} title="Average rank across all six indices (lower is better)">
+                    Avg rank
+                  </th>
+                  {QOL_INDICES.map(idx => (
+                    <th key={idx.key} scope="col" style={{ textAlign:"right", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }} title={idx.desc}>
+                      {idx.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...qolRows, { country:{ code:"US", name:"United States" }, ...usQoL, isUS:true }]
+                  .sort((a, b) => a.overallRank - b.overallRank)
+                  .map(row => {
+                    const isUS = row.country.code === "US";
+                    return (
+                      <tr key={row.country.code} style={{
+                        borderBottom:"1px solid #EADFC2",
+                        background: isUS ? "#FFFBEB" : "transparent",
+                        borderTop: isUS ? "2px solid #FFCC00" : undefined,
+                        borderBottomColor: isUS ? "#FFCC00" : "#EADFC2",
+                        borderBottomWidth: isUS ? 2 : 1,
+                      }}>
+                        <td style={{ padding:"10px 12px", fontWeight: isUS ? 700 : 500, color: isUS ? "#7A5C00" : "#0A1F4D" }}>
+                          #{row.overallRank}
+                        </td>
+                        <th scope="row" style={{ textAlign:"left", padding:"10px 12px", fontWeight: isUS ? 700 : 500 }}>
+                          <span style={{ marginRight:6 }}><Flag code={row.country.code} size={14} /></span>{row.country.name}
+                        </th>
+                        <td style={{ textAlign:"right", padding:"10px 12px", fontWeight: isUS ? 700 : 600, fontFamily:'"Fraunces", Georgia, serif', fontSize:15 }}>
+                          {row.avgRank.toFixed(2)}
+                        </td>
+                        {QOL_INDICES.map(idx => (
+                          <td key={idx.key} style={{ textAlign:"right", padding:"10px 12px", color:"#4A5578" }}>
+                            {row[idx.key] == null ? "—" : row[idx.key]}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                }
+              </tbody>
+            </table>
+          </div>
+          <p style={{ fontSize:12, color:"#4A5578", marginTop:12, fontStyle:"italic" }}>
+            Rankings are <strong>lower is better</strong> — #1 is the best performer in each index. Individual
+            index columns show the country's rank within that specific index's global dataset (so HDI rank 21
+            means the US is 21st in the world on the UN Human Development Index). The overall rank in this
+            table is among the 28 places shown here (US + EU 27), not worldwide.
+          </p>
+        </section>
+
+        {/* ================= ROAD TRAFFIC DEATHS ================= */}
+        <section aria-labelledby="road-h" style={{ marginBottom:48, paddingTop:32, borderTop:"2px solid #EADFC2" }}>
+          <h3 id="road-h" style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D" }}>
+            Road fatalities: another lens on everyday safety
+          </h3>
+          <p style={{ fontSize:14, color:"#4A5578", marginBottom:24, maxWidth:720, lineHeight:1.55 }}>
+            Violent crime gets the headlines, but driving is statistically the most dangerous thing most
+            Americans do each day. The US averages <strong>{US_ROAD_DEATHS} road deaths per 100,000 people</strong> —
+            every EU country does better, most of them dramatically so.
+          </p>
+
+          {/* Road hero stats */}
+          <div style={{
+            display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16, marginBottom:32,
+          }}>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #8C1F1F" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>US road death rate</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#8C1F1F", lineHeight:1 }}>
+                {US_ROAD_DEATHS}
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>per 100,000 residents, per year</div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #003399" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>EU average</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#003399", lineHeight:1 }}>
+                {roadEuAvg.toFixed(1)}
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                across the 27 EU member states
+              </div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #FFCC00", background:"#FFFBEB" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>The gap</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#7A5C00", lineHeight:1 }}>
+                {roadVsAvg}×
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                US vs EU average. {roadVsSafest}× vs{" "}
+                <Flag code={safestRoad.country.code} size={14} /> {safestRoad.country.name}/
+                <Flag code={roadRows[1]?.country.code} size={14} /> {roadRows[1]?.country.name} (safest).
+              </div>
+            </div>
+          </div>
+
+          {/* Road deaths bar chart */}
+          <div style={{ background:"#fff", border:"1px solid #E8DFC9", borderRadius:4, padding:"20px 24px" }}>
+            <Bar
+              label="United States"
+              rate={US_ROAD_DEATHS}
+              highlight={true}
+              code="US"
+              max={maxRoad}
+              unitLabel="road deaths per 100,000 residents"
+            />
+            <div style={{ borderBottom:"1px dashed #CEC2A0", margin:"10px 0" }} />
+            {roadRows.map(x => (
+              <Bar
+                key={x.country.code}
+                label={x.country.name}
+                rate={x.rate}
+                code={x.country.code}
+                max={maxRoad}
+                unitLabel="road deaths per 100,000 residents"
+              />
+            ))}
+          </div>
+          <p style={{ fontSize:12, color:"#4A5578", marginTop:12, fontStyle:"italic" }}>
+            All <strong>{euSaferRoads} of 27</strong> EU member states have lower road death rates than the US.
+            Source: WHO Global Status Report on Road Safety and national road safety agencies.
+          </p>
+        </section>
+
         {/* ================= PERSONAL SAFETY (HOMICIDE) ================= */}
-        <h3 style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D" }}>
+        <section aria-labelledby="homicide-h" style={{ marginBottom:48, paddingTop:32, borderTop:"2px solid #EADFC2" }}>
+        <h3 id="homicide-h" style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D" }}>
           Personal safety: homicide risk
         </h3>
         <p style={{ fontSize:14, color:"#4A5578", marginBottom:24, maxWidth:720, lineHeight:1.55 }}>
@@ -1994,183 +2173,6 @@ export default function MoveMeToEU() {
             cross-border absolute comparisons aren't reliable.
           </p>
         </section>
-
-        {/* ================= ROAD TRAFFIC DEATHS ================= */}
-        <section aria-labelledby="road-h" style={{ marginBottom:48, paddingTop:32, borderTop:"2px solid #EADFC2" }}>
-          <h3 id="road-h" style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D" }}>
-            Road fatalities: another lens on everyday safety
-          </h3>
-          <p style={{ fontSize:14, color:"#4A5578", marginBottom:24, maxWidth:720, lineHeight:1.55 }}>
-            Violent crime gets the headlines, but driving is statistically the most dangerous thing most
-            Americans do each day. The US averages <strong>{US_ROAD_DEATHS} road deaths per 100,000 people</strong> —
-            every EU country does better, most of them dramatically so.
-          </p>
-
-          {/* Road hero stats */}
-          <div style={{
-            display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16, marginBottom:32,
-          }}>
-            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #8C1F1F" }}>
-              <div style={{ ...S.label, marginBottom:8 }}>US road death rate</div>
-              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#8C1F1F", lineHeight:1 }}>
-                {US_ROAD_DEATHS}
-              </div>
-              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>per 100,000 residents, per year</div>
-            </div>
-            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #003399" }}>
-              <div style={{ ...S.label, marginBottom:8 }}>EU average</div>
-              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#003399", lineHeight:1 }}>
-                {roadEuAvg.toFixed(1)}
-              </div>
-              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
-                across the 27 EU member states
-              </div>
-            </div>
-            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #FFCC00", background:"#FFFBEB" }}>
-              <div style={{ ...S.label, marginBottom:8 }}>The gap</div>
-              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#7A5C00", lineHeight:1 }}>
-                {roadVsAvg}×
-              </div>
-              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
-                US vs EU average. {roadVsSafest}× vs{" "}
-                <Flag code={safestRoad.country.code} size={14} /> {safestRoad.country.name}/
-                <Flag code={roadRows[1]?.country.code} size={14} /> {roadRows[1]?.country.name} (safest).
-              </div>
-            </div>
-          </div>
-
-          {/* Road deaths bar chart */}
-          <div style={{ background:"#fff", border:"1px solid #E8DFC9", borderRadius:4, padding:"20px 24px" }}>
-            <Bar
-              label="United States"
-              rate={US_ROAD_DEATHS}
-              highlight={true}
-              code="US"
-              max={maxRoad}
-              unitLabel="road deaths per 100,000 residents"
-            />
-            <div style={{ borderBottom:"1px dashed #CEC2A0", margin:"10px 0" }} />
-            {roadRows.map(x => (
-              <Bar
-                key={x.country.code}
-                label={x.country.name}
-                rate={x.rate}
-                code={x.country.code}
-                max={maxRoad}
-                unitLabel="road deaths per 100,000 residents"
-              />
-            ))}
-          </div>
-          <p style={{ fontSize:12, color:"#4A5578", marginTop:12, fontStyle:"italic" }}>
-            All <strong>{euSaferRoads} of 27</strong> EU member states have lower road death rates than the US.
-            Source: WHO Global Status Report on Road Safety and national road safety agencies.
-          </p>
-        </section>
-
-        {/* ================= QUALITY OF LIFE ================= */}
-        <section aria-labelledby="qol-h" style={{ marginBottom:48, paddingTop:32, borderTop:"2px solid #EADFC2" }}>
-          <h3 id="qol-h" style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D" }}>
-            Quality of life: where the US actually ranks
-          </h3>
-          <p style={{ fontSize:14, color:"#4A5578", marginBottom:24, maxWidth:720, lineHeight:1.55 }}>
-            Across six independent global quality-of-life indices — HDI, the OECD Better Life Index, Numbeo,
-            Social Progress, Good Country, and the Happy Planet Index — the United States ranks{" "}
-            <strong>#{usQoL.overallRank} out of 28</strong>{" "}
-            (the 27 EU member states plus the US), with an average rank of{" "}
-            <strong>{usQoL.avgRank.toFixed(1)}</strong>.
-          </p>
-
-          {/* QoL hero stats */}
-          <div style={{
-            display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16, marginBottom:32,
-          }}>
-            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #003399" }}>
-              <div style={{ ...S.label, marginBottom:8 }}>US overall QoL rank</div>
-              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#003399", lineHeight:1 }}>
-                #{usQoL.overallRank}<span style={{ fontSize:24, color:"#4A5578" }}>/28</span>
-              </div>
-              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>across the US and the EU 27</div>
-            </div>
-            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #1F5D1F" }}>
-              <div style={{ ...S.label, marginBottom:8 }}>EU countries ranked higher</div>
-              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#1F5D1F", lineHeight:1 }}>
-                {euQolBetter}<span style={{ fontSize:24, color:"#4A5578" }}>/27</span>
-              </div>
-              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
-                score better than the US on the combined index
-              </div>
-            </div>
-            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #FFCC00", background:"#FFFBEB" }}>
-              <div style={{ ...S.label, marginBottom:8 }}>EU countries ranked lower</div>
-              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#7A5C00", lineHeight:1 }}>
-                {euQolWorse}<span style={{ fontSize:24, color:"#4A5578" }}>/27</span>
-              </div>
-              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
-                score worse than the US on the combined index
-              </div>
-            </div>
-          </div>
-
-          {/* QoL comparison table */}
-          <div style={{ overflowX:"auto", background:"#fff", border:"1px solid #E8DFC9", borderRadius:4 }}
-            role="region" aria-label="Quality of life rankings table, scroll horizontally if needed"
-            tabIndex={0}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-              <caption className="sr-only">Quality of life index rankings: US vs each EU country, lower is better</caption>
-              <thead>
-                <tr style={{ background:"#F3EBDA", borderBottom:"2px solid #003399" }}>
-                  <th scope="col" style={{ textAlign:"left", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }}><span aria-hidden="true">#</span><span className="sr-only">Overall rank</span></th>
-                  <th scope="col" style={{ textAlign:"left", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }}>Country</th>
-                  <th scope="col" style={{ textAlign:"right", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }} title="Average rank across all six indices (lower is better)">
-                    Avg rank
-                  </th>
-                  {QOL_INDICES.map(idx => (
-                    <th key={idx.key} scope="col" style={{ textAlign:"right", padding:"10px 12px", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578" }} title={idx.desc}>
-                      {idx.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...qolRows, { country:{ code:"US", name:"United States" }, ...usQoL, isUS:true }]
-                  .sort((a, b) => a.overallRank - b.overallRank)
-                  .map(row => {
-                    const isUS = row.country.code === "US";
-                    return (
-                      <tr key={row.country.code} style={{
-                        borderBottom:"1px solid #EADFC2",
-                        background: isUS ? "#FFFBEB" : "transparent",
-                        borderTop: isUS ? "2px solid #FFCC00" : undefined,
-                        borderBottomColor: isUS ? "#FFCC00" : "#EADFC2",
-                        borderBottomWidth: isUS ? 2 : 1,
-                      }}>
-                        <td style={{ padding:"10px 12px", fontWeight: isUS ? 700 : 500, color: isUS ? "#7A5C00" : "#0A1F4D" }}>
-                          #{row.overallRank}
-                        </td>
-                        <th scope="row" style={{ textAlign:"left", padding:"10px 12px", fontWeight: isUS ? 700 : 500 }}>
-                          <span style={{ marginRight:6 }}><Flag code={row.country.code} size={14} /></span>{row.country.name}
-                        </th>
-                        <td style={{ textAlign:"right", padding:"10px 12px", fontWeight: isUS ? 700 : 600, fontFamily:'"Fraunces", Georgia, serif', fontSize:15 }}>
-                          {row.avgRank.toFixed(2)}
-                        </td>
-                        {QOL_INDICES.map(idx => (
-                          <td key={idx.key} style={{ textAlign:"right", padding:"10px 12px", color:"#4A5578" }}>
-                            {row[idx.key] == null ? "—" : row[idx.key]}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })
-                }
-              </tbody>
-            </table>
-          </div>
-          <p style={{ fontSize:12, color:"#4A5578", marginTop:12, fontStyle:"italic" }}>
-            Rankings are <strong>lower is better</strong> — #1 is the best performer in each index. Individual
-            index columns show the country's rank within that specific index's global dataset (so HDI rank 21
-            means the US is 21st in the world on the UN Human Development Index). The overall rank in this
-            table is among the 28 places shown here (US + EU 27), not worldwide.
-          </p>
         </section>
 
         {/* Methodology */}
@@ -2178,12 +2180,12 @@ export default function MoveMeToEU() {
           <summary style={{ cursor:"pointer", fontWeight:600 }}>About this data &amp; how it affects rankings</summary>
           <div style={{ marginTop:12, lineHeight:1.6 }}>
             <p style={{ marginBottom:8 }}>
-              <strong>Homicide.</strong> Intentional homicide is the one crime metric where US and EU data are
-              directly comparable — the definition is essentially the same everywhere and reporting is
-              consistently near-complete. Theft, burglary, and assault each mean different things in different
-              jurisdictions, and reporting rates vary substantially, so absolute cross-border comparisons of
-              those categories would be misleading. Per-100,000 homicide rates come from Eurostat crime
-              statistics and the FBI Uniform Crime Reporting program.
+              <strong>Quality of life.</strong> The overall rank shown is an average of six independent global
+              indices: the UN Human Development Index, the OECD Better Life Index, the Numbeo Quality of Life
+              Index, the Social Progress Imperative's Social Progress Index, the Good Country Index, and the
+              Happy Planet Index. Each index weights different factors (income, education, environment,
+              social cohesion, life expectancy, and so on), so an average across all six is a more robust
+              signal than any single source. The average is over the 28 places compared here (US + EU 27).
             </p>
             <p style={{ marginBottom:8 }}>
               <strong>Road fatalities.</strong> Deaths per 100,000 population per year, sourced from the WHO
@@ -2194,12 +2196,12 @@ export default function MoveMeToEU() {
               to 25+ (Mississippi, South Carolina) but every state is still above nearly every EU country.
             </p>
             <p style={{ marginBottom:8 }}>
-              <strong>Quality of life.</strong> The overall rank shown is an average of six independent global
-              indices: the UN Human Development Index, the OECD Better Life Index, the Numbeo Quality of Life
-              Index, the Social Progress Imperative's Social Progress Index, the Good Country Index, and the
-              Happy Planet Index. Each index weights different factors (income, education, environment,
-              social cohesion, life expectancy, and so on), so an average across all six is a more robust
-              signal than any single source. The average is over the 28 places compared here (US + EU 27).
+              <strong>Homicide.</strong> Intentional homicide is the one crime metric where US and EU data are
+              directly comparable — the definition is essentially the same everywhere and reporting is
+              consistently near-complete. Theft, burglary, and assault each mean different things in different
+              jurisdictions, and reporting rates vary substantially, so absolute cross-border comparisons of
+              those categories would be misleading. Per-100,000 homicide rates come from Eurostat crime
+              statistics and the FBI Uniform Crime Reporting program.
             </p>
             <p>
               <strong>Effect on pathway finder scores.</strong> The finder's <strong>Safety</strong> score
