@@ -573,6 +573,16 @@ const PRIORITIES = [
   { id: "qualityOfLife", label: "Overall quality of life", desc: "HDI, OECD Better Life, Social Progress, and other global indices combined" },
 ];
 
+/* Priority weighting budget. Every factor starts at PRIORITY_BASELINE (3 = moderate).
+   Users get PRIORITY_BONUS_POOL extra points to spend above baseline. Lowering a factor
+   below baseline refunds points back into the pool, so dropping something to 1 frees
+   2 points to push another factor higher. The intent is to force tradeoffs rather
+   than letting users mark everything "critical." */
+const PRIORITY_BASELINE = 3;
+const PRIORITY_BONUS_POOL = 5;
+const computeNetSpent = (w) =>
+  PRIORITIES.reduce((sum, p) => sum + ((w[p.id] ?? PRIORITY_BASELINE) - PRIORITY_BASELINE), 0);
+
 /* ---------- OFFICIAL GOVERNMENT PORTALS ---------------------------------- */
 /* English-accessible official sources where possible; fallback to authoritative national portal. */
 const PORTALS = {
@@ -790,10 +800,7 @@ export default function MoveMeToEU() {
     hasEUFamily: false, canRemote: false, wantsCitizenship: true,
   });
   const [weights, setWeights] = useState(() =>
-    Object.fromEntries(PRIORITIES.map(p => [p.id, 3]))
-  );
-  const [dealbreakers, setDealbreakers] = useState(() =>
-    Object.fromEntries(PRIORITIES.map(p => [p.id, 0]))
+    Object.fromEntries(PRIORITIES.map(p => [p.id, PRIORITY_BASELINE]))
   );
   const [shortlist, setShortlist] = useState([]);   // array of country codes, max 3
   const [comparing, setComparing] = useState(false);
@@ -818,6 +825,26 @@ export default function MoveMeToEU() {
     });
   };
   const clearShortlist = () => { setShortlist([]); setComparing(false); };
+
+  /* ---------- Priority budget helpers ----------
+     Decreases are always allowed (they refund points). Increases are clamped to
+     whatever fits in the remaining budget so users can't max everything to 5. */
+  const setWeight = (id, newVal) => {
+    const proposed = { ...weights, [id]: newVal };
+    if (computeNetSpent(proposed) <= PRIORITY_BONUS_POOL) {
+      setWeights(proposed);
+      return;
+    }
+    // Increase would blow the budget. Clamp to the highest legal value for this slider.
+    const otherSpent = computeNetSpent(weights) - (weights[id] - PRIORITY_BASELINE);
+    const maxLegal = PRIORITY_BASELINE + (PRIORITY_BONUS_POOL - otherSpent);
+    setWeights({ ...weights, [id]: Math.max(0, Math.min(5, maxLegal)) });
+  };
+  const netSpent = computeNetSpent(weights);
+  const refunded = PRIORITIES.reduce((s, p) => s + Math.max(0, PRIORITY_BASELINE - weights[p.id]), 0);
+  const totalAvailable = PRIORITY_BONUS_POOL + refunded;
+  const totalUsed = PRIORITIES.reduce((s, p) => s + Math.max(0, weights[p.id] - PRIORITY_BASELINE), 0);
+  const pointsRemaining = PRIORITY_BONUS_POOL - netSpent;
 
   /* ---------- Matching engine ---------- */
   const results = useMemo(() => {
@@ -899,21 +926,13 @@ export default function MoveMeToEU() {
           Math.round(spread(rawScore) + bonus - penalty)
         ));
 
-        // --- Dealbreakers ---
-        const failedDealbreakers = PRIORITIES.filter(p => {
-          const min = dealbreakers[p.id];
-          if (!min) return false;
-          return priorityValue(c, p.id) < min;
-        });
-
         return {
           country: c,
           score: finalScore,
           rawScore: Math.round(rawScore),
           bonus, penalty,
           availableVisas,
-          failedDealbreakers,
-          eligible: availableVisas.length > 0 && failedDealbreakers.length === 0,
+          eligible: availableVisas.length > 0,
           hasAny5,
         };
       })
@@ -921,7 +940,7 @@ export default function MoveMeToEU() {
         if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
         return b.score - a.score;
       });
-  }, [step, comparing, view, selectedVisa, profile, weights, dealbreakers]);
+  }, [step, comparing, view, selectedVisa, profile, weights]);
 
   const shortlistedResults = useMemo(
     () => shortlist.map(code => results.find(r => r.country.code === code)).filter(Boolean),
@@ -1120,20 +1139,78 @@ export default function MoveMeToEU() {
     </div>
   );
 
-  const renderStep2 = () => (
+  const renderStep2 = () => {
+    const budgetPct = totalAvailable > 0
+      ? Math.min(100, Math.round((totalUsed / totalAvailable) * 100))
+      : 0;
+    const remainingLabel = pointsRemaining === 1 ? "1 point" : `${pointsRemaining} points`;
+    return (
     <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
       <h2 style={S.h2}>What matters most?</h2>
       <p style={S.lede}>
-        Rate each factor from <strong>0 (doesn't matter, excluded from scoring)</strong> to{" "}
-        <strong>5 (critical)</strong>. Higher weights count disproportionately more — critical priorities
-        can dominate the match score, and countries that excel (or fail) on them earn bonuses (or penalties).
-        Optionally set a minimum threshold to flag dealbreakers.
+        Every factor starts at <strong>3 (moderate)</strong>. You have{" "}
+        <strong>{PRIORITY_BONUS_POOL} extra points</strong> to bump factors that
+        matter most up to 5. Lowering a factor below 3 refunds points back into
+        the pool — so you can drop something to 1 or 0 to push another higher.
+        The point is to make tradeoffs, not max everything.
       </p>
+
+      <div
+        style={{
+          background:"#fff", border:"1px solid #E8DFC9", borderRadius:4,
+          padding:"16px 20px", marginBottom:24,
+        }}
+        aria-live="polite"
+      >
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap", gap:8 }}>
+          <div style={{ fontSize:13, letterSpacing:"0.08em", textTransform:"uppercase", color:"#4A5578", fontWeight:700 }}>
+            Priority budget
+          </div>
+          <div style={{ fontSize:14, color:"#0A1F4D" }}>
+            <strong style={{ color: pointsRemaining === 0 ? "#8C1F1F" : "#003399", fontSize:16 }}>
+              {remainingLabel}
+            </strong>{" "}
+            remaining
+            <span style={{ color:"#4A5578" }}> · {totalUsed} of {totalAvailable} used</span>
+          </div>
+        </div>
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={totalAvailable}
+          aria-valuenow={totalUsed}
+          aria-valuetext={`${totalUsed} of ${totalAvailable} extra points used`}
+          style={{
+            marginTop:10, height:8, background:"#EADFC2", borderRadius:999, overflow:"hidden",
+          }}
+        >
+          <div style={{
+            width:`${budgetPct}%`, height:"100%",
+            background: pointsRemaining === 0 ? "#FFCC00" : "#003399",
+            transition:"width .18s ease, background .18s ease",
+          }} />
+        </div>
+        {refunded > 0 && (
+          <div style={{ marginTop:8, fontSize:12, color:"#4A5578" }}>
+            +{refunded} freed by lowering {refunded === 1 ? "a factor" : "factors"} below 3.
+          </div>
+        )}
+      </div>
 
       <div role="group" aria-label="Priorities">
         {PRIORITIES.map(p => {
-          const weightValueText = ["not important (excluded from scoring)","minor","moderate","important","very important","critical"][weights[p.id]];
-          const dealbreakerValueText = dealbreakers[p.id] === 0 ? "no dealbreaker set" : `must score at least ${dealbreakers[p.id]} out of 100`;
+          const w = weights[p.id];
+          const weightValueText = ["not important (excluded from scoring)","minor","moderate","important","very important","critical"][w];
+          const otherSpent = netSpent - (w - PRIORITY_BASELINE);
+          const maxAllowed = Math.max(0, Math.min(5, PRIORITY_BASELINE + (PRIORITY_BONUS_POOL - otherSpent)));
+          const atCap = w === maxAllowed && w < 5;
+          const chipStyle = w === 0
+            ? S.chipRed
+            : w >= 4
+              ? S.chipGold
+              : w >= PRIORITY_BASELINE
+                ? S.chipBlue
+                : { background:"#F5EFD9", color:"#7A5C00", border:"1px solid #E8DFC9" };
           return (
           <div key={p.id} style={S.sliderRow}>
             <div>
@@ -1141,29 +1218,24 @@ export default function MoveMeToEU() {
               <div style={S.priDesc}>{p.desc}</div>
               <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
                 <label htmlFor={`w-${p.id}`} style={{ fontSize:12, color:"#4A5578" }}>
-                  Importance: <strong style={{ color:"#003399" }}>{weights[p.id]}</strong>
+                  Importance: <strong style={{ color:"#003399" }}>{w}</strong>
+                  <span style={{ color:"#4A5578" }}> / 5</span>
                 </label>
                 <input id={`w-${p.id}`} type="range" min={0} max={5}
-                  value={weights[p.id]}
-                  onChange={e => setWeights({ ...weights, [p.id]: +e.target.value })}
+                  value={w}
+                  onChange={e => setWeight(p.id, +e.target.value)}
                   style={{ flex:1, maxWidth:220 }}
                   aria-label={`Importance of ${p.label} on a scale from 0 to 5`}
-                  aria-valuetext={`${weights[p.id]} of 5 — ${weightValueText}`} />
-              </div>
-              <div style={{ marginTop:6, display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                <label htmlFor={`d-${p.id}`} style={{ fontSize:12, color:"#4A5578" }}>
-                  Dealbreaker below: <strong style={{ color:"#8C1F1F" }}>{dealbreakers[p.id] || "off"}</strong>
-                </label>
-                <input id={`d-${p.id}`} type="range" min={0} max={90} step={10}
-                  value={dealbreakers[p.id]}
-                  onChange={e => setDealbreakers({ ...dealbreakers, [p.id]: +e.target.value })}
-                  style={{ flex:1, maxWidth:220 }}
-                  aria-label={`Minimum acceptable score for ${p.label}. Countries scoring below this will be flagged as dealbreakers.`}
-                  aria-valuetext={dealbreakerValueText} />
+                  aria-valuetext={`${w} of 5 — ${weightValueText}${atCap ? `; capped by remaining priority budget` : ""}`} />
+                {atCap && (
+                  <span style={{ fontSize:11, color:"#7A5C00" }} aria-hidden="true">
+                    budget cap — lower another factor to raise this
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ textAlign:"right" }}>
-              <span style={{ ...S.chip, ...S.chipBlue }} aria-hidden="true">weight {weights[p.id]}</span>
+              <span style={{ ...S.chip, ...chipStyle }} aria-hidden="true">weight {w}</span>
             </div>
           </div>
           );
@@ -1175,7 +1247,8 @@ export default function MoveMeToEU() {
         <button type="button" style={S.btn} onClick={goNext}>See my matches →</button>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderResultRow = (r) => {
     const isShortlisted = shortlist.includes(r.country.code);
@@ -1452,11 +1525,6 @@ export default function MoveMeToEU() {
                     {r.availableVisas.length === 0 && (
                       <span style={{ ...S.chip, ...S.chipRed }}>No matching pathway for your profile</span>
                     )}
-                    {r.failedDealbreakers.map(p => (
-                      <span key={p.id} style={{ ...S.chip, ...S.chipRed }}>
-                        Dealbreaker: {p.label}
-                      </span>
-                    ))}
                   </div>
                 </div>
               ))}
