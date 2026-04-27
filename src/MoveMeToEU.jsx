@@ -583,6 +583,177 @@ const PRIORITY_BONUS_POOL = 5;
 const computeNetSpent = (w) =>
   PRIORITIES.reduce((sum, p) => sum + ((w[p.id] ?? PRIORITY_BASELINE) - PRIORITY_BASELINE), 0);
 
+/* ---------- QUIZ DEFINITION (interactive matching path) ------------------ */
+/* The quiz is an alternative entry to the Pathway Finder. Every user gets exactly
+   8 questions: 1 trunk + 2 branched (varies by trunk answer) + 5 universal value
+   tradeoffs. Each tradeoff bumps one priority by +1 from baseline 3, so the 5
+   tradeoffs spend exactly the PRIORITY_BONUS_POOL. Quiz answers populate
+   `selectedVisa`, profile fields (education/income/capital/canRemote/hasEUFamily/
+   wantsCitizenship), and weights — then hand off to the existing Step 3 results
+   view. From there, "Refine with sliders" jumps to wizard Step 2 with everything
+   pre-filled. This keeps a single scoring engine and a single +5 budget. */
+
+const QUIZ = {
+  trunk: {
+    id: "trunk",
+    title: "What's bringing you to the EU?",
+    desc: "Pick the closest fit. The next questions adapt to your situation.",
+    options: [
+      { id: "career",       label: "Career or a job opportunity",                              visa: "bluecard"   },
+      { id: "remote",       label: "Remote work for a non-EU employer",                        visa: "nomad",      profile: { canRemote: true } },
+      { id: "selfemployed", label: "Self-employed or freelance",                               visa: "freelance"  },
+      { id: "retirement",   label: "Retirement or near-retirement",                            visa: "retirement" },
+      { id: "family",       label: "Joining family already in the EU",                         visa: "family",     profile: { hasEUFamily: true } },
+      { id: "investment",   label: "Investment or starting a business",                        visa: "golden"     },
+      { id: "study",        label: "Education or study",                                       visa: "student"    },
+    ],
+  },
+  branches: {
+    career: [
+      { id: "career_stage", title: "Where are you in the process?", options: [
+        { id: "sponsored",   label: "I have an offer with sponsorship" },
+        { id: "unconfirmed", label: "I have an offer, sponsorship unconfirmed" },
+        { id: "interviewing",label: "I'm actively interviewing" },
+        { id: "preseek",     label: "I plan to relocate first, then job-hunt", visa: "jobseeker" },
+      ]},
+      { id: "career_edu", title: "Your highest qualification?", options: [
+        { id: "highschool", label: "High school / secondary",         profile: { education: "highschool" } },
+        { id: "associates", label: "Associate or vocational degree",  profile: { education: "associates" } },
+        { id: "bachelors",  label: "Bachelor's degree",               profile: { education: "bachelors"  } },
+        { id: "masters",    label: "Master's degree",                 profile: { education: "masters"    } },
+        { id: "doctorate",  label: "Doctorate",                       profile: { education: "doctorate"  } },
+      ]},
+    ],
+    remote: [
+      { id: "remote_structure", title: "How is your remote work structured?", options: [
+        { id: "w2",   label: "US W-2 employee with remote approval" },
+        { id: "1099", label: "1099 contractor" },
+        { id: "llc",  label: "I own an LLC or business" },
+        { id: "free", label: "Multiple freelance clients" },
+      ]},
+      { id: "remote_income", title: "Monthly remote-work income (USD)?", options: [
+        { id: "u3k",   label: "Under $3,000",       profile: { income: "under30"  } },
+        { id: "3to5",  label: "$3,000 – $5,000",    profile: { income: "30to60"   } },
+        { id: "5to8",  label: "$5,000 – $8,000",    profile: { income: "60to100"  } },
+        { id: "8plus", label: "$8,000 or more",     profile: { income: "100to150" } },
+      ]},
+    ],
+    selfemployed: [
+      { id: "se_type", title: "What type of self-employed work?", options: [
+        { id: "intl",  label: "Service provider with international clients" },
+        { id: "local", label: "Local-market business or services" },
+        { id: "mix",   label: "A mix of both" },
+      ]},
+      { id: "se_income", title: "Approximate annual income (USD)?", options: [
+        { id: "u40",     label: "Under $40,000",          profile: { income: "under30"  } },
+        { id: "40to80",  label: "$40,000 – $80,000",      profile: { income: "30to60"   } },
+        { id: "80to150", label: "$80,000 – $150,000",     profile: { income: "60to100"  } },
+        { id: "150plus", label: "$150,000 or more",       profile: { income: "100to150" } },
+      ]},
+    ],
+    retirement: [
+      { id: "ret_source", title: "Primary retirement income source?", options: [
+        { id: "pension", label: "Pension" },
+        { id: "invest",  label: "Investment portfolio" },
+        { id: "rental",  label: "Rental income" },
+        { id: "mix",     label: "A mix of sources" },
+      ]},
+      { id: "ret_income", title: "Monthly passive income (USD)?", options: [
+        { id: "u2k",   label: "Under $2,000",       profile: { income: "under30"  } },
+        { id: "2to4",  label: "$2,000 – $4,000",    profile: { income: "30to60"   } },
+        { id: "4to7",  label: "$4,000 – $7,000",    profile: { income: "60to100"  } },
+        { id: "7plus", label: "$7,000 or more",     profile: { income: "100to150" } },
+      ]},
+    ],
+    family: [
+      { id: "fam_who", title: "Who are you joining?", options: [
+        { id: "eu_spouse",       label: "EU citizen spouse" },
+        { id: "noneu_spouse",    label: "Non-EU spouse with EU residency" },
+        { id: "eu_parent_child", label: "EU citizen parent or child" },
+        { id: "other",           label: "Other immediate family" },
+      ]},
+      { id: "fam_country", title: "Are they in a specific country?", options: [
+        { id: "specific", label: "Yes — one specific country" },
+        { id: "few",      label: "A few options under consideration" },
+        { id: "open",     label: "Open / not yet decided" },
+      ]},
+    ],
+    investment: [
+      { id: "inv_capital", title: "Available investment capital (USD)?", options: [
+        { id: "50to250",  label: "$50,000 – $250,000",      profile: { capital: "50to250"  } },
+        { id: "250to500", label: "$250,000 – $500,000",     profile: { capital: "250to500" } },
+        { id: "500to1m",  label: "$500,000 – $1,000,000",   profile: { capital: "500to1m"  } },
+        { id: "over1m",   label: "$1,000,000 or more",      profile: { capital: "over1m"   } },
+      ]},
+      { id: "inv_pref", title: "Investment preference?", options: [
+        { id: "realestate", label: "Real estate" },
+        { id: "funds",      label: "Government funds or bonds" },
+        { id: "business",   label: "Active business or startup" },
+        { id: "open",       label: "Open to any qualifying option" },
+      ]},
+    ],
+    study: [
+      { id: "study_level", title: "Level of study?", options: [
+        { id: "undergrad",  label: "Undergraduate (Bachelor's)",  profile: { education: "highschool" } },
+        { id: "masters",    label: "Master's",                    profile: { education: "bachelors"  } },
+        { id: "phd",        label: "PhD",                         profile: { education: "masters"    } },
+        { id: "vocational", label: "Vocational training",         profile: { education: "highschool" } },
+      ]},
+      { id: "study_funding", title: "Funding situation?", options: [
+        { id: "selffund",    label: "Self-funded" },
+        { id: "scholarship", label: "Scholarship or grant" },
+        { id: "family",      label: "Family support" },
+        { id: "combo",       label: "A combination of the above" },
+      ]},
+    ],
+  },
+  values: [
+    {
+      id: "v_cost_health",
+      title: "Cost vs. healthcare",
+      desc: "Both options assume universal healthcare; the question is the trade-off vs. cost.",
+      options: [
+        { id: "cost",   label: "Lower cost of living, with healthcare that's reliable but not flashy", weight: "affordability" },
+        { id: "health", label: "Higher cost is fine if healthcare is top-tier with short waits",       weight: "healthcare"    },
+      ],
+    },
+    {
+      id: "v_pace",
+      title: "Career pace and intensity",
+      options: [
+        { id: "ambitious", label: "Ambitious city, strong job market — I can match the intensity",   weight: "jobs"   },
+        { id: "outdoors",  label: "Slower pace, easier access to outdoors and weekends in nature",   weight: "nature" },
+      ],
+    },
+    {
+      id: "v_language",
+      title: "Language posture",
+      options: [
+        { id: "english",     label: "Daily life needs to work in English",                                                       weight: "english"    },
+        { id: "citizenship", label: "I'll learn the local language for deeper integration and faster citizenship",               weight: "citizenship", profile: { wantsCitizenship: true } },
+      ],
+    },
+    {
+      id: "v_place",
+      title: "Where you actually want to live",
+      options: [
+        { id: "transit", label: "Dense walkable city with transit and culture at the door", weight: "transit"      },
+        { id: "town",    label: "Smaller town, slower pace, more car dependent",            weight: "qualityOfLife" },
+      ],
+    },
+    {
+      id: "v_community",
+      title: "What kind of community do you want around you?",
+      options: [
+        { id: "international", label: "Lots of immigrants/expats and international community", weight: "international" },
+        { id: "culture",       label: "Distinctive local culture, fewer compatriots",          weight: "culture"       },
+      ],
+    },
+  ],
+};
+
+const QUIZ_TOTAL_QUESTIONS = 8; // 1 trunk + 2 branched + 5 values
+
 /* ---------- OFFICIAL GOVERNMENT PORTALS ---------------------------------- */
 /* English-accessible official sources where possible; fallback to authoritative national portal. */
 const PORTALS = {
@@ -807,6 +978,14 @@ export default function MoveMeToEU() {
   const [chartScope, setChartScope] = useState("all"); // "all" | "matches"
   const [expandedPathways, setExpandedPathways] = useState({}); // { "DE:bluecard": true, ... }
 
+  /* Entry mode lets users pick between the wizard (existing 4-step flow) and the
+     interactive quiz on first arrival. null = show the intro fork; "wizard" or
+     "quiz" = engaged with that path. The quiz funnels into the wizard's Step 3
+     (matches) once finished, with weights and profile pre-populated. */
+  const [entryMode, setEntryMode] = useState(null); // null | "wizard" | "quiz"
+  const [quizStep, setQuizStep] = useState(0);      // 0..7 across the 8 questions
+  const [quizAnswers, setQuizAnswers] = useState({}); // { trunk: "career", career_stage: "sponsored", ... }
+
   const mainRef = useRef(null);
   const [animateIn, setAnimateIn] = useState(true);
   useEffect(() => {
@@ -814,7 +993,7 @@ export default function MoveMeToEU() {
     requestAnimationFrame(() => setAnimateIn(true));
     window.scrollTo(0, 0);
     mainRef.current?.focus({ preventScroll: true });
-  }, [step, comparing, view]);
+  }, [step, comparing, view, entryMode, quizStep]);
 
   /* ---------- Shortlist helpers ---------- */
   const toggleShortlist = (code) => {
@@ -845,6 +1024,126 @@ export default function MoveMeToEU() {
   const totalAvailable = PRIORITY_BONUS_POOL + refunded;
   const totalUsed = PRIORITIES.reduce((s, p) => s + Math.max(0, weights[p.id] - PRIORITY_BASELINE), 0);
   const pointsRemaining = PRIORITY_BONUS_POOL - netSpent;
+
+  /* ---------- Quiz helpers ----------
+     Branched-eligibility hybrid: trunk → 2 branched eligibility → 5 universal value
+     trade-offs. Each value trade-off bumps one priority by +1 (5 questions × +1 =
+     exactly the PRIORITY_BONUS_POOL of 5). On finish, all answers fold into the
+     wizard's existing state (selectedVisa, profile, weights) and the user lands on
+     the existing Step 3 results. From there, "Refine with sliders" jumps to Step 2
+     with everything pre-filled. */
+
+  const trunkAnswerId = quizAnswers.trunk || null;
+  const trunkOption = trunkAnswerId
+    ? QUIZ.trunk.options.find(o => o.id === trunkAnswerId)
+    : null;
+  const activeBranch = trunkOption ? QUIZ.branches[trunkOption.id] : null;
+
+  // Map quizStep (0..7) onto a concrete question. Steps 1-2 depend on the
+  // trunk answer, so we read it from quizAnswers rather than tracking branch
+  // state separately.
+  const getQuizQuestion = () => {
+    if (quizStep === 0) return { kind: "trunk", q: QUIZ.trunk };
+    if ((quizStep === 1 || quizStep === 2) && activeBranch) {
+      return { kind: "branch", q: activeBranch[quizStep - 1] };
+    }
+    if (quizStep >= 3 && quizStep <= 7) {
+      return { kind: "values", q: QUIZ.values[quizStep - 3] };
+    }
+    return null;
+  };
+
+  // Apply all quiz answers to wizard state, then route to Step 3 results.
+  // Trunk and branched options can carry { visa } or { profile } keys; values
+  // options carry { weight } and optionally { profile }.
+  const finishQuiz = (answers) => {
+    let newSelectedVisa = null;
+    const newProfile = { ...profile };
+    const newWeights = Object.fromEntries(
+      PRIORITIES.map(p => [p.id, PRIORITY_BASELINE])
+    );
+
+    const applyOption = (opt) => {
+      if (!opt) return;
+      if (opt.visa) newSelectedVisa = opt.visa;
+      if (opt.profile) Object.assign(newProfile, opt.profile);
+      if (opt.weight) {
+        newWeights[opt.weight] = Math.min(5, (newWeights[opt.weight] || PRIORITY_BASELINE) + 1);
+      }
+    };
+
+    const trunkOpt = QUIZ.trunk.options.find(o => o.id === answers.trunk);
+    applyOption(trunkOpt);
+
+    if (trunkOpt) {
+      const branch = QUIZ.branches[trunkOpt.id];
+      if (branch) {
+        branch.forEach(q => {
+          const opt = q.options.find(o => o.id === answers[q.id]);
+          applyOption(opt);
+        });
+      }
+    }
+
+    QUIZ.values.forEach(q => {
+      const opt = q.options.find(o => o.id === answers[q.id]);
+      applyOption(opt);
+    });
+
+    setSelectedVisa(newSelectedVisa);
+    setProfile(newProfile);
+    setWeights(newWeights);
+    setEntryMode("wizard"); // hand off to the existing wizard rendering
+    setStep(3);
+  };
+
+  const handleQuizAnswer = (questionId, optionId) => {
+    const newAnswers = { ...quizAnswers, [questionId]: optionId };
+    setQuizAnswers(newAnswers);
+    if (quizStep === QUIZ_TOTAL_QUESTIONS - 1) {
+      finishQuiz(newAnswers);
+    } else {
+      setQuizStep(quizStep + 1);
+    }
+  };
+
+  const goBackQuiz = () => {
+    if (quizStep === 0) {
+      setEntryMode(null); // back to the intro fork
+    } else {
+      setQuizStep(quizStep - 1);
+    }
+  };
+
+  // "Start over" — full reset to the intro fork. Distinct from the nav-link
+  // route to the fork (which preserves any in-progress data so the user can
+  // pop back). Start-over also clears shortlists, expanded pathways, and the
+  // user's US-state selector on the Why EU page.
+  const startOver = () => {
+    setEntryMode(null);
+    setStep(0);
+    setQuizStep(0);
+    setQuizAnswers({});
+    setSelectedVisa(null);
+    setProfile({
+      education: "bachelors", income: "60to100", capital: "under50",
+      age: 35, yearsExp: 10,
+      hasEUFamily: false, canRemote: false, wantsCitizenship: true,
+    });
+    setWeights(Object.fromEntries(PRIORITIES.map(p => [p.id, PRIORITY_BASELINE])));
+    setShortlist([]);
+    setComparing(false);
+    setExpandedPathways({});
+  };
+
+  // Top priorities for the Step 3 summary card. Lists every priority bumped
+  // above baseline, capped at 5 to keep the card to one line on most viewports.
+  const topPriorities = useMemo(() => {
+    return PRIORITIES
+      .filter(p => weights[p.id] > PRIORITY_BASELINE)
+      .sort((a, b) => weights[b.id] - weights[a.id])
+      .slice(0, 5);
+  }, [weights]);
 
   /* ---------- Matching engine ---------- */
   const results = useMemo(() => {
@@ -1017,8 +1316,222 @@ export default function MoveMeToEU() {
      STEP RENDERERS
      ============================================================ */
 
+  const renderIntro = () => (
+    <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
+      <h2 style={S.h2}>Find your match</h2>
+      <p style={S.lede}>
+        Two ways to discover the EU countries that fit your situation. Both
+        produce the same kind of ranked list — pick whichever feels right.
+      </p>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+        gap: 20,
+        maxWidth: 880,
+        margin: "0 auto",
+      }}>
+        {/* Quiz card — listed first; better fit for first-time relocators */}
+        <button
+          type="button"
+          onClick={() => { setEntryMode("quiz"); setQuizStep(0); setQuizAnswers({}); }}
+          style={{
+            ...S.card,
+            padding: "32px 28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+          aria-label="Take the interactive quiz — about 2 minutes">
+          <span style={{ ...S.icon, fontSize: 28 }} aria-hidden="true">◇</span>
+          <div style={{ ...S.cardTitle, fontSize: 24 }}>Take the quiz</div>
+          <p style={{ ...S.cardDesc, marginBottom: 8 }}>
+            Answer 8 quick questions and we'll match you to countries based on
+            your situation and what you value. No need to know visa types in
+            advance.
+          </p>
+          <div style={{
+            marginTop: "auto",
+            paddingTop: 12,
+            fontSize: 12,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#003399",
+            fontWeight: 700,
+          }}>
+            About 2 minutes →
+          </div>
+        </button>
+
+        {/* Wizard card — for users who already know what they want */}
+        <button
+          type="button"
+          onClick={() => { setEntryMode("wizard"); setStep(0); }}
+          style={{
+            ...S.card,
+            padding: "32px 28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+          aria-label="Use the detailed wizard — about 4 to 5 minutes">
+          <span style={{ ...S.icon, fontSize: 28 }} aria-hidden="true">◆</span>
+          <div style={{ ...S.cardTitle, fontSize: 24 }}>Use the detailed wizard</div>
+          <p style={{ ...S.cardDesc, marginBottom: 8 }}>
+            Pick a visa pathway, fill in your eligibility, and dial in priority
+            sliders yourself. Best if you already know roughly what you want.
+          </p>
+          <div style={{
+            marginTop: "auto",
+            paddingTop: 12,
+            fontSize: 12,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#003399",
+            fontWeight: 700,
+          }}>
+            About 4–5 minutes →
+          </div>
+        </button>
+      </div>
+
+      {/* Why EU? cross-link, mirrors the Step 0 banner */}
+      <div style={{
+        marginTop: 32,
+        background: "#fff",
+        border: "1px solid #E8DFC9",
+        borderLeft: "4px solid #FFCC00",
+        borderRadius: 4,
+        padding: "14px 18px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 16,
+        flexWrap: "wrap",
+        maxWidth: 880,
+        marginLeft: "auto",
+        marginRight: "auto",
+      }}>
+        <div style={{ fontSize: 14, color: "#0A1F4D" }}>
+          <strong>Moving from the US?</strong>{" "}
+          <span style={{ color: "#4A5578" }}>See how your state compares to every EU member state on safety, road deaths, and quality of life.</span>
+        </div>
+        <button type="button" onClick={() => setView("whyEU")}
+          className="cta-outline"
+          style={{ ...S.compareBtn, whiteSpace: "nowrap" }}>
+          Why EU? →
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderQuiz = () => {
+    const current = getQuizQuestion();
+    if (!current) return null;
+    const { q } = current;
+    const questionNumber = quizStep + 1;
+    const currentAnswer = quizAnswers[q.id];
+    const progressPct = Math.round((questionNumber / QUIZ_TOTAL_QUESTIONS) * 100);
+
+    return (
+      <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
+        {/* Progress header */}
+        <div style={{ marginBottom: 28, maxWidth: 760, margin: "0 auto 28px" }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "baseline",
+            gap: 12, flexWrap: "wrap", marginBottom: 8,
+          }}>
+            <div style={{
+              fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase",
+              color: "#4A5578", fontWeight: 700,
+            }}>
+              Question {questionNumber} of {QUIZ_TOTAL_QUESTIONS}
+            </div>
+            <button
+              type="button"
+              onClick={() => setEntryMode(null)}
+              style={{
+                background: "transparent", border: "none", color: "#4A5578",
+                fontSize: 13, cursor: "pointer", textDecoration: "underline",
+                fontFamily: "inherit", padding: 0,
+              }}>
+              Switch to detailed wizard
+            </button>
+          </div>
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={QUIZ_TOTAL_QUESTIONS}
+            aria-valuenow={questionNumber}
+            aria-valuetext={`Question ${questionNumber} of ${QUIZ_TOTAL_QUESTIONS}`}
+            style={{ height: 6, background: "#EADFC2", borderRadius: 999, overflow: "hidden" }}>
+            <div style={{
+              width: `${progressPct}%`,
+              height: "100%",
+              background: "#003399",
+              transition: "width .25s ease",
+            }} />
+          </div>
+        </div>
+
+        <h2 style={S.h2}>{q.title}</h2>
+        {q.desc && <p style={S.lede}>{q.desc}</p>}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 14,
+            maxWidth: 760,
+            margin: "0 auto",
+          }}
+          role="group"
+          aria-label={q.title}>
+          {q.options.map(opt => (
+            <button
+              key={opt.id}
+              type="button"
+              aria-pressed={currentAnswer === opt.id}
+              onClick={() => handleQuizAnswer(q.id, opt.id)}
+              style={{
+                ...S.card,
+                ...(currentAnswer === opt.id ? S.cardActive : {}),
+                padding: "18px 20px",
+                fontSize: 15,
+                lineHeight: 1.45,
+                fontWeight: 500,
+              }}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ ...S.nav, maxWidth: 760, margin: "32px auto 0" }}>
+          <button type="button" style={S.btnGhost} onClick={goBackQuiz}>
+            ← {quizStep === 0 ? "Back to start" : "Back"}
+          </button>
+          <span style={{ fontSize: 13, color: "#4A5578", alignSelf: "center" }}>
+            Tap an answer to continue
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const renderStep0 = () => (
     <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
+      <div style={{ marginBottom: 16 }}>
+        <button
+          type="button"
+          onClick={() => setEntryMode(null)}
+          style={{
+            background: "transparent", border: "none", color: "#4A5578",
+            fontSize: 13, cursor: "pointer", textDecoration: "underline",
+            fontFamily: "inherit", padding: 0,
+          }}>
+          ← Back to start
+        </button>
+      </div>
       <div style={{
         background:"#fff", border:"1px solid #E8DFC9", borderLeft:"4px solid #FFCC00",
         borderRadius:4, padding:"14px 18px", marginBottom:28, display:"flex",
@@ -1509,6 +2022,50 @@ export default function MoveMeToEU() {
           You have reached the maximum of 3 countries in your comparison shortlist. Remove one to add another.
         </span>
 
+        {/* Priority summary card. Shows whenever any priority is bumped above
+            baseline (so this lights up for both quiz finishers and wizard users
+            who actually customized Step 2). The "Refine with sliders" CTA jumps
+            to Step 2 with weights and profile already set. */}
+        {topPriorities.length > 0 && (
+          <div style={{
+            background: "#FFFBEB",
+            border: "1px solid #FFCC00",
+            borderLeft: "4px solid #FFCC00",
+            borderRadius: 4,
+            padding: "16px 20px",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}>
+            <div style={{ fontSize: 14, color: "#0A1F4D", lineHeight: 1.5 }}>
+              <span style={{
+                display: "inline-block", marginRight: 8,
+                fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
+                color: "#7A5C00", fontWeight: 700,
+              }}>
+                Your priorities
+              </span>
+              {topPriorities.map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && <span style={{ color: "#7A5C00", margin: "0 6px" }}>·</span>}
+                  <strong>{p.label}</strong>
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="cta-outline"
+              style={{ ...S.compareBtn, whiteSpace: "nowrap" }}
+              onClick={() => setStep(2)}
+              aria-label="Refine your priorities with the slider view">
+              Refine with sliders →
+            </button>
+          </div>
+        )}
+
         {eligible.map(renderResultRow)}
 
         {ineligible.length > 0 && (
@@ -1533,7 +2090,7 @@ export default function MoveMeToEU() {
         )}
 
         <div style={S.nav}>
-          <button type="button" style={S.btnGhost} onClick={() => setStep(0)}>← Start over</button>
+          <button type="button" style={S.btnGhost} onClick={startOver}>← Start over</button>
           <button type="button" style={S.btn} onClick={goBack}>Refine priorities</button>
         </div>
       </div>
@@ -2283,8 +2840,8 @@ export default function MoveMeToEU() {
 
         {/* CTA back to wizard */}
         <div style={{ display:"flex", gap:12, flexWrap:"wrap", justifyContent:"center", padding:"32px 0", borderTop:"1px solid #EADFC2" }}>
-          <button type="button" style={S.btn} onClick={() => { setView("wizard"); setStep(0); }}>
-            Find your pathway to the EU →
+          <button type="button" style={S.btn} onClick={() => { setView("wizard"); setEntryMode(null); }}>
+            Find your match →
           </button>
         </div>
       </div>
@@ -2361,7 +2918,7 @@ export default function MoveMeToEU() {
           <nav aria-label="Primary" style={{ display:"flex", alignItems:"center", gap:16, flexWrap:"wrap" }}>
             <button
               type="button"
-              onClick={() => setView("wizard")}
+              onClick={() => { setView("wizard"); setEntryMode(null); }}
               aria-current={view === "wizard" ? "page" : undefined}
               style={{
                 background:"transparent", border:"none", color:"#fff", fontFamily:"inherit", fontSize:14,
@@ -2385,7 +2942,7 @@ export default function MoveMeToEU() {
               }}>
               Why EU?
             </button>
-            {view === "wizard" && step < 3 && !comparing && (
+            {view === "wizard" && entryMode === "wizard" && step < 3 && !comparing && (
               <ol style={{ ...S.stepper, marginLeft:12, paddingLeft:12, borderLeft:"1px solid rgba(255,255,255,0.2)" }} aria-label="Progress">
                 {stepNames.slice(0, 3).map((name, i) => (
                   <li key={name} style={{ ...S.stepDot, ...(i <= step ? S.stepDotActive : {}) }}
@@ -2403,18 +2960,21 @@ export default function MoveMeToEU() {
       <main id="main" ref={mainRef} tabIndex={-1} style={S.main} role="main">
         {view === "whyEU" ? renderWhyEU() : (
           comparing ? renderCompare() : (
-            <>
-              {step === 0 && renderStep0()}
-              {step === 1 && renderStep1()}
-              {step === 2 && renderStep2()}
-              {step === 3 && renderStep3()}
-            </>
+            entryMode === null ? renderIntro() :
+            entryMode === "quiz" ? renderQuiz() : (
+              <>
+                {step === 0 && renderStep0()}
+                {step === 1 && renderStep1()}
+                {step === 2 && renderStep2()}
+                {step === 3 && renderStep3()}
+              </>
+            )
           )
         )}
       </main>
 
       {/* Floating comparison tray — appears on step 3 when 1+ shortlisted */}
-      {view === "wizard" && step === 3 && !comparing && shortlist.length > 0 && (
+      {view === "wizard" && entryMode === "wizard" && step === 3 && !comparing && shortlist.length > 0 && (
         <div style={{ ...S.floatingBar, animation:"popIn .3s ease" }}
           role="region"
           aria-label="Country comparison tray"
