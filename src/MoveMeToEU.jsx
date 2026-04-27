@@ -831,6 +831,21 @@ function Flag({ code, alt, size = 18, style, decorative = false }) {
   );
 }
 
+/* ---------- HERO IMAGES (intro fork rotating slideshow) ------------------ */
+/* 4 stock photos that rotate every 6s on the intro fork's hero band. Files
+   live in public/images/hero/ and must be processed to WebP at ~1600w
+   (desktop) and ~800w (mobile) before commit. Filenames are referenced
+   from the JSX as /images/hero/<name>; renaming a file requires updating
+   this list. Each entry needs a descriptive alt for screen readers and a
+   short credit attribution rendered in the page footer. */
+const HERO_IMAGES = [
+  { src: "/images/hero/hero-01.webp", alt: "Wisteria-draped buildings line the cobblestone Konviktstraße in Freiburg's old town",                                                  credit: "Paul Henri-Alley / Pexels" },
+  { src: "/images/hero/hero-02.webp", alt: "Café La Favorite Saint-Paul beneath a Haussmann-style apartment building on rue Saint-Antoine, Paris",                                  credit: "ChiemSeherin / Pixabay"    },
+  { src: "/images/hero/hero-03.webp", alt: "Brick townhouses, parked bicycles and a church spire along a quiet canal in Delft, Netherlands",                                       credit: "djedj / Pixabay"           },
+  { src: "/images/hero/hero-04.webp", alt: "The Hemisfèric and Palau de les Arts at the City of Arts and Sciences reflected in still water at dusk in Valencia, Spain",            credit: "papagnoc / Pixabay"        },
+];
+const HERO_ROTATE_MS = 6000;
+
 /* ---------- 27 EU MEMBER STATES ------------------------------------------ */
 const COUNTRIES = [
   { code:"AT", name:"Austria",        capital:"Vienna",     flag:"🇦🇹", pop:9.1,  lang:"German",                       eurozone:true,  schengen:true,  natYears:10,
@@ -994,6 +1009,30 @@ export default function MoveMeToEU() {
     window.scrollTo(0, 0);
     mainRef.current?.focus({ preventScroll: true });
   }, [step, comparing, view, entryMode, quizStep]);
+
+  /* ---------- Hero slideshow ----------
+     Rotates HERO_IMAGES every HERO_ROTATE_MS. Pauses when:
+     - The user is hovering the hero band (heroPaused = true)
+     - The browser tab is hidden (saves CPU and avoids racing animations)
+     - The user prefers reduced motion (effect never starts the interval)
+     A manual indicator row lets users jump to any slide directly; clicking
+     also resets the auto-rotate clock so the chosen image gets a full cycle.
+     Only runs when the user is actually on the intro fork. */
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  useEffect(() => {
+    if (entryMode !== null || view !== "wizard") return;
+    if (heroPaused) return;
+    if (typeof window !== "undefined") {
+      const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      if (reduceMotion) return;
+    }
+    const id = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      setHeroIndex(i => (i + 1) % HERO_IMAGES.length);
+    }, HERO_ROTATE_MS);
+    return () => clearInterval(id);
+  }, [entryMode, view, heroPaused, heroIndex]);
 
   /* ---------- Shortlist helpers ---------- */
   const toggleShortlist = (code) => {
@@ -1318,11 +1357,136 @@ export default function MoveMeToEU() {
 
   const renderIntro = () => (
     <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
-      <h2 style={S.h2}>Find your match</h2>
-      <p style={S.lede}>
-        Two ways to discover the EU countries that fit your situation. Both
-        produce the same kind of ranked list — pick whichever feels right.
-      </p>
+      {/* Hero band: full-bleed within the main column. Rotating image with a
+          gradient overlay so the white headline + lede stay legible. The two
+          choice cards sit on the normal cream background below the hero. */}
+      <section
+        aria-label="Welcome to Move Me To EU"
+        className="hero-band"
+        onMouseEnter={() => setHeroPaused(true)}
+        onMouseLeave={() => setHeroPaused(false)}
+        onFocus={() => setHeroPaused(true)}
+        onBlur={() => setHeroPaused(false)}
+        style={{
+          position: "relative",
+          width: "100%",
+          minHeight: 480,
+          marginBottom: 32,
+          borderRadius: 4,
+          overflow: "hidden",
+          background: "#0A1F4D", // fallback if images fail to load
+          isolation: "isolate",
+        }}>
+        {/* Image stack — all four <img> elements rendered, opacity-toggled.
+            The non-active images stay loaded so transitions are instant. */}
+        {HERO_IMAGES.map((img, i) => (
+          <img
+            key={img.src}
+            src={img.src}
+            alt={i === heroIndex ? img.alt : ""}
+            aria-hidden={i === heroIndex ? undefined : "true"}
+            loading={i === 0 ? "eager" : "lazy"}
+            decoding="async"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+              opacity: i === heroIndex ? 1 : 0,
+              transition: "opacity .8s ease",
+              zIndex: 1,
+            }}
+          />
+        ))}
+
+        {/* Gradient overlay — darker at the top to ensure white text contrast */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 2,
+            background: "linear-gradient(180deg, rgba(10,31,77,0.65) 0%, rgba(10,31,77,0.35) 50%, rgba(10,31,77,0.55) 100%)",
+          }}
+        />
+
+        {/* Headline + lede content overlay */}
+        <div
+          className="hero-content"
+          style={{
+            position: "relative",
+            zIndex: 3,
+            padding: "60px 28px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 480,
+            textAlign: "center",
+          }}>
+          <h2 style={{
+            ...S.h2,
+            color: "#fff",
+            margin: "0 0 12px",
+            textShadow: "0 2px 16px rgba(0,0,0,0.35)",
+            maxWidth: 720,
+          }}>
+            Find your match
+          </h2>
+          <p style={{
+            ...S.lede,
+            color: "#FAF6EE",
+            margin: "0 auto 0",
+            textShadow: "0 1px 8px rgba(0,0,0,0.4)",
+          }}>
+            Two ways to discover the EU countries that fit your situation. Both
+            produce the same kind of ranked list — pick whichever feels right.
+          </p>
+        </div>
+
+        {/* Slide indicators — clickable, keyboard-accessible, sit above the
+            gradient. Spacebar / Enter activate via the native button role. */}
+        <div
+          role="tablist"
+          aria-label="Hero image slide selector"
+          style={{
+            position: "absolute",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 4,
+            display: "flex",
+            gap: 8,
+            padding: "6px 10px",
+            background: "rgba(10,31,77,0.4)",
+            borderRadius: 999,
+            backdropFilter: "blur(4px)",
+          }}>
+          {HERO_IMAGES.map((img, i) => (
+            <button
+              key={`dot-${img.src}`}
+              type="button"
+              role="tab"
+              aria-selected={i === heroIndex}
+              aria-label={`Show slide ${i + 1} of ${HERO_IMAGES.length}: ${img.alt}`}
+              onClick={() => setHeroIndex(i)}
+              style={{
+                width: 10,
+                height: 10,
+                padding: 0,
+                borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.7)",
+                background: i === heroIndex ? "#FFCC00" : "rgba(255,255,255,0.25)",
+                cursor: "pointer",
+                transition: "background .2s ease, transform .15s ease",
+                transform: i === heroIndex ? "scale(1.15)" : "scale(1)",
+              }}
+            />
+          ))}
+        </div>
+      </section>
 
       <div style={{
         display: "grid",
@@ -2883,6 +3047,13 @@ export default function MoveMeToEU() {
         .cta-outline:not(:disabled):hover { background:#E4ECFF; border-color:#003399; transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,51,153,0.08); filter:none; text-decoration:none; }
         .cta-outline.is-active:not(:disabled):hover { background:#FFD633; border-color:#E6B800; }
         summary::marker { color:#003399; }
+        /* Hero band — shrink on narrow viewports so it doesn't dominate phones */
+        .hero-band { min-height: 480px !important; }
+        .hero-band .hero-content { min-height: 480px !important; padding: 60px 28px !important; }
+        @media (max-width: 600px) {
+          .hero-band { min-height: 320px !important; }
+          .hero-band .hero-content { min-height: 320px !important; padding: 40px 20px !important; }
+        }
       `}</style>
       <a href="#main" className="skip-link">
         Skip to main content
@@ -3001,9 +3172,16 @@ export default function MoveMeToEU() {
       )}
 
       <footer style={{ borderTop:"1px solid #E8DFC9", padding:"24px 20px 80px", fontSize:12, color:"#4A5578", textAlign:"center" }}>
-        Move Me To EU · 27 member states · Data compiled from public sources, including official government portals,
-        Eurostat, Numbeo indices and EF English Proficiency Index. Always confirm visa requirements with the
-        relevant consulate before acting.
+        <div>
+          Move Me To EU · 27 member states · Data compiled from public sources, including official government portals,
+          Eurostat, Numbeo indices and EF English Proficiency Index. Always confirm visa requirements with the
+          relevant consulate before acting.
+        </div>
+        {HERO_IMAGES.some(img => img.credit) && (
+          <div style={{ marginTop:8, fontSize:11, color:"#4A5578" }}>
+            Hero images: {HERO_IMAGES.filter(img => img.credit).map(img => img.credit).join(" · ")}
+          </div>
+        )}
       </footer>
     </div>
   );
