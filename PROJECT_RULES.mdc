@@ -19,7 +19,7 @@ This file exists so any Claude session can jump into this project without re-der
 
 ## Stack & deployment (non-negotiable facts)
 
-- **Frontend:** React 18 + Vite, single `src/MoveMeToEU.jsx` file (~2,370 lines). Self-styled — no CSS framework, no component library. Styled with inline `style={}` objects and one small `<style>{css}</style>` block for pseudo-classes like `:focus-visible` and the skip link.
+- **Frontend:** React 18 + Vite, single `src/MoveMeToEU.jsx` file (~2,450 lines). Self-styled — no CSS framework, no component library. Styled with inline `style={}` objects and one small `<style>{css}</style>` block for pseudo-classes like `:focus-visible` and the skip link.
 - **Fonts:** Google Fonts — `Fraunces` (serif, headings) + `Manrope` (sans, body).
 - **Colors:** EU blue `#003399`, EU gold `#FFCC00`, cream `#FAF6EE` page background, primary text `#0A1F4D`, secondary `#4A5578`. Never `#8A94AD` — that failed WCAG AA and is now removed.
 - **Hosting:** Render static site (auto-deploys on every push to `main`).
@@ -80,6 +80,34 @@ The match score is **not** a flat weighted average. History: the first version b
 Result: country scores now range 38–99 depending on who's asking. Bulgaria scores 87 for budget retirees, 46 for career families — that's the point.
 
 Related: the "strong fit / weak fit" labels below the score surface the bonus/penalty to the user for transparency.
+
+### Step 2 priorities: budgeted, not free-dialed
+
+Step 2 ("What matters most?") uses a **priority budget** rather than free 0–5 sliders for every factor. History: when sliders were unconstrained, the natural user behavior was to set everything to 5 ("everything matters!"), which collapses the scoring back into a flat average and defeats the whole non-linear weighting algorithm above.
+
+Current mechanics (defined as constants near the `PRIORITIES` array in `MoveMeToEU.jsx`):
+
+- `PRIORITY_BASELINE = 3` — every factor starts at 3 (moderate)
+- `PRIORITY_BONUS_POOL = 5` — users get 5 extra points to spend above baseline
+- Lowering a factor below 3 **refunds** points back into the pool (drop something to 1 to free 2 points; drop to 0 to free 3)
+- Raising a factor is clamped by remaining budget — the slider visually still allows 0–5 but `setWeight(id, val)` rejects increases that would exceed the cap and snaps to the highest legal value
+
+The Step 2 page leads with a **priority budget meter** card (cream/white, EU-blue progress bar that turns gold at zero remaining) showing points remaining, points used vs total available, and a "+N freed by lowering factors below 3" line that only appears when the user has actually freed something. Each individual slider that's pinned at its current cap shows a small "budget cap — lower another factor to raise this" hint inline, plus an `aria-valuetext` suffix for screen readers.
+
+Right-edge weight chips are color-tiered for at-a-glance feedback: red at 0, gold at 4–5, blue at 3, muted tan at 1–2.
+
+The intent is friction. Users must make tradeoffs to express priorities, which is exactly the input the scoring algorithm needs to differentiate countries. Don't remove the cap; don't widen the pool past 5 without rethinking the scoring algorithm's bonus/penalty thresholds (which are tuned for the current spread of weight values users actually produce).
+
+### Dealbreaker thresholds: removed (April 2026)
+
+Step 2 used to have a second per-factor slider letting users set "minimum acceptable score" thresholds (0–90 in steps of 10) that would mark countries as ineligible if they fell below. These were removed when the priority budget replaced free-dialed sliders. Reasons:
+
+- The non-linear scoring + heavy penalty for weighted-5 priorities scoring ≤30 already encodes "this is a dealbreaker for me" implicitly
+- Two sliders per factor doubled the cognitive load on a step that was already dense
+- Hard thresholds on a 0–100 scale invite false precision — users have no calibration for what "60" means across heterogeneous indices
+- Eligibility is now purely a function of visa pathway availability, which is the genuinely binary constraint
+
+Don't reintroduce dealbreaker sliders. If a user really hates a factor, they can set its weight to 5 and let the penalty system push weak performers down.
 
 ### Safety priority = weighted blend, not a single metric
 
@@ -162,8 +190,9 @@ A full 508 compliance pass was completed. The tool is AA-compliant. When editing
 - **Heading hierarchy:** h1 (site) → h2 (page) → h3 (section) → h4 (subsection). Don't skip levels.
 - **Flags in context:** When a country name is adjacent, the `<Flag>` component is decorative-by-default (no alt, `aria-hidden`). When a flag stands alone, pass an `alt` prop.
 - **Overflow regions are keyboard-scrollable:** `tabIndex={0}` + `role="region"` + descriptive `aria-label` on every horizontally-scrolling container.
-- **Live regions:** The floating comparison tray uses `aria-live="polite"` so state changes announce.
-- **Sliders have `aria-valuetext`:** Descriptive ("3 of 5 — moderate"), not just numeric.
+- **Live regions:** The floating comparison tray uses `aria-live="polite"` so state changes announce. The Step 2 priority budget card also uses `aria-live="polite"` so points-remaining updates announce as users adjust sliders.
+- **Sliders have `aria-valuetext`:** Descriptive ("3 of 5 — moderate"), not just numeric. When a Step 2 slider is at its budget cap, the `aria-valuetext` includes "; capped by remaining priority budget" so screen-reader users know why further increases are being rejected.
+- **Progress bars have ARIA:** The Step 2 budget meter uses `role="progressbar"` with `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, and a descriptive `aria-valuetext`.
 
 ### Skip link
 
@@ -189,6 +218,9 @@ Decisions that have been tried and rejected, or suggestions that waste time:
 8. **Don't include localStorage/sessionStorage.** Not needed; state is intentionally per-session.
 9. **Don't scaffold npm scripts for production tests** (Jest, Vitest, etc.). If adding tests becomes needed, ask first — the project deliberately ships without a test harness to keep the iteration loop fast.
 10. **Don't propose dark mode.** Not in scope.
+11. **Don't remove the Step 2 priority budget cap.** Free 0–5 sliders for all 13 factors collapse the scoring algorithm because everyone sets everything to 5. The friction is the feature.
+12. **Don't reintroduce dealbreaker thresholds.** Removed April 2026 — replaced by the implicit weighted-5 penalty. See "Dealbreaker thresholds: removed" decision above.
+13. **Don't widen `PRIORITY_BONUS_POOL` past 5 casually.** The bonus/penalty thresholds in the scoring algorithm are tuned for the spread of weight distributions users actually produce under a 5-point budget. Changing the pool requires re-tuning.
 
 ---
 
@@ -202,6 +234,7 @@ Things mentioned in prior conversations but not yet built:
 - **sitemap.xml and robots.txt in `public/`.** Templates exist in `DEPLOYMENT_GUIDE.md`.
 - **Disable the onrender.com subdomain.** After movemeto.eu is fully live, toggle Render Subdomain to Disabled in Render settings to avoid duplicate-content SEO issues.
 - **Mobile testing of expand panels.** The visa detail `<dl>` grid may need narrow-width adjustments. Not yet tested on phone.
+- **Mobile testing of the priority budget meter.** The header row uses `flexWrap:"wrap"` so it should reflow under 380px, but the "+N freed by lowering factors below 3" supplementary line hasn't been tested for narrow widths.
 - **City-level data.** Justin has mentioned this as an eventual goal — neighborhood-level scoring (Stadtfinder is a related tool he built separately for Aachen).
 - **VISA_DETAILS as JSON.** Moving country-specific data out of the component into a separate JSON file would make quarterly refreshes less error-prone. Not urgent.
 - **Annual data-freshness review.** Schedule for each January when most EU states update minimum-wage-indexed thresholds.
@@ -251,4 +284,4 @@ When uncertain about tone, err toward the tone of *The Economist* or a thoughtfu
 
 ---
 
-*Last updated: April 24, 2026. Update this file when architectural decisions change.*
+*Last updated: April 26, 2026. Update this file when architectural decisions change.*
