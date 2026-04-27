@@ -117,6 +117,13 @@ const EU_CRIME = {
   SE: { homicide:1.1,  theft:"Moderate", burglary:"Low",      assault:"Moderate", robbery:"Low"      },
 };
 
+/* US national homicide rate (per 100k). Source: FBI UCR / CDC WONDER, ~2023.
+   This is a national average — individual states vary widely (1.3–12.5).
+   Used by the intro fork's Why EU? banner to show a stable comparison
+   independent of any particular state. The Why EU? page itself uses
+   per-state data via the US_STATES selector. */
+const US_HOMICIDE_AVG = 6.4;
+
 /* Convert a per-100k homicide rate to a 5–98 safety score (inverse linear). */
 const homicideToSafety = (rate) => {
   if (rate == null) return null;
@@ -1559,33 +1566,126 @@ export default function MoveMeToEU() {
         </button>
       </div>
 
-      {/* Why EU? cross-link, mirrors the Step 0 banner */}
-      <div style={{
-        marginTop: 32,
-        background: "#fff",
-        border: "1px solid #E8DFC9",
-        borderLeft: "4px solid #FFCC00",
-        borderRadius: 4,
-        padding: "14px 18px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 16,
-        flexWrap: "wrap",
-        maxWidth: 880,
-        marginLeft: "auto",
-        marginRight: "auto",
-      }}>
-        <div style={{ fontSize: 14, color: "#0A1F4D" }}>
-          <strong>Moving from the US?</strong>{" "}
-          <span style={{ color: "#4A5578" }}>See how your state compares to every EU member state on safety, road deaths, and quality of life.</span>
-        </div>
-        <button type="button" onClick={() => setView("whyEU")}
-          className="cta-outline"
-          style={{ ...S.compareBtn, whiteSpace: "nowrap" }}>
-          Why EU? →
-        </button>
-      </div>
+      {/* Why EU? promoted banner — three-stat preview to surface the comparison
+          data more prominently than a one-liner can. Stats are computed at
+          module scope from the same QOL/ROAD_DEATHS/EU_CRIME data the Why EU
+          page uses, so they stay in sync if the underlying data updates.
+          Sits below the two choice cards as a clear secondary action. */}
+      {(() => {
+        const usQolRank = QOL.US?.overallRank ?? 23;
+        const roadEuValues = Object.values(ROAD_DEATHS);
+        const roadEuAvg = roadEuValues.reduce((s, x) => s + x, 0) / roadEuValues.length;
+        const roadGap = (US_ROAD_DEATHS / roadEuAvg).toFixed(1);
+        const euHomicideValues = Object.values(EU_CRIME)
+          .filter(c => c.homicide != null)
+          .map(c => c.homicide);
+        const euHomicideAvg = euHomicideValues.reduce((s, x) => s + x, 0) / euHomicideValues.length;
+        const homicideGap = (US_HOMICIDE_AVG / euHomicideAvg).toFixed(1);
+
+        return (
+          <section
+            aria-labelledby="why-eu-banner-h"
+            style={{
+              marginTop: 32,
+              background: "#fff",
+              border: "1px solid #E8DFC9",
+              borderLeft: "4px solid #FFCC00",
+              borderRadius: 4,
+              padding: "28px 32px",
+              maxWidth: 880,
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}>
+            <div style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
+              marginBottom: 20,
+            }}>
+              <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                <div style={{
+                  fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase",
+                  color: "#7A5C00", fontWeight: 700, marginBottom: 6,
+                }}>
+                  Why EU?
+                </div>
+                <h3 id="why-eu-banner-h" style={{
+                  fontFamily: '"Fraunces", Georgia, serif',
+                  fontSize: 22, fontWeight: 600, color: "#0A1F4D",
+                  margin: 0, lineHeight: 1.25,
+                }}>
+                  How does the US actually compare? Here's the data.
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setView("whyEU")}
+                className="cta-outline"
+                style={{ ...S.compareBtn, whiteSpace: "nowrap", alignSelf: "center" }}>
+                See the full comparison →
+              </button>
+            </div>
+
+            {/* Three-stat row. Each stat: serif number, label, descriptor.
+                Thin dividers between columns on desktop; stack on mobile. */}
+            <div
+              role="group"
+              aria-label="Quick US-vs-EU statistics"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 0,
+                borderTop: "1px solid #EADFC2",
+                paddingTop: 16,
+              }}>
+              <div className="why-eu-stat" style={{ padding: "4px 16px 4px 0", borderRight: "1px solid #EADFC2" }}>
+                <div style={{
+                  fontFamily: '"Fraunces", Georgia, serif',
+                  fontSize: 32, fontWeight: 500, color: "#003399", lineHeight: 1,
+                }}>
+                  #{usQolRank}<span style={{ fontSize: 18, color: "#4A5578" }}>/28</span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
+                  US quality-of-life rank
+                </div>
+                <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
+                  Across six combined global indices
+                </div>
+              </div>
+              <div className="why-eu-stat" style={{ padding: "4px 16px", borderRight: "1px solid #EADFC2" }}>
+                <div style={{
+                  fontFamily: '"Fraunces", Georgia, serif',
+                  fontSize: 32, fontWeight: 500, color: "#8C1F1F", lineHeight: 1,
+                }}>
+                  {roadGap}×
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
+                  US road deaths vs. EU
+                </div>
+                <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
+                  Per capita, vs. the EU average
+                </div>
+              </div>
+              <div className="why-eu-stat" style={{ padding: "4px 0 4px 16px" }}>
+                <div style={{
+                  fontFamily: '"Fraunces", Georgia, serif',
+                  fontSize: 32, fontWeight: 500, color: "#8C1F1F", lineHeight: 1,
+                }}>
+                  {homicideGap}×
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
+                  US homicide rate vs. EU
+                </div>
+                <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
+                  Per capita, vs. the EU average
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
     </div>
   );
 
@@ -3053,6 +3153,10 @@ export default function MoveMeToEU() {
         @media (max-width: 600px) {
           .hero-band { min-height: 320px !important; }
           .hero-band .hero-content { min-height: 320px !important; padding: 40px 20px !important; }
+          /* Why EU banner stat row: drop the column dividers when columns
+             stack vertically, add a top border between stacked items instead. */
+          .why-eu-stat { border-right: none !important; padding: 14px 0 !important; }
+          .why-eu-stat + .why-eu-stat { border-top: 1px solid #EADFC2; }
         }
       `}</style>
       <a href="#main" className="skip-link">
