@@ -1,27 +1,96 @@
 <!doctype html>
 <html lang="en">
   <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#003399" />
-  <title>Move Me To EU — Find your path to an EU passport</title>
-  <meta name="description" content="Match your profile to the best European Union country for you. Compare visa pathways, quality of life, and safety across all 27 EU member states." />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#003399" />
 
-  <!-- Open Graph / social sharing -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://movemeto.eu/" />
-  <meta property="og:title" content="Move Me To EU — Find your path to an EU passport" />
-  <meta property="og:description" content="Compare visa pathways, quality of life, and safety across all 27 EU member states, matched to your profile." />
-  <meta property="og:locale" content="en_US" />
+    <!-- Primary -->
+    <title>Move Me To EU — Find your visa pathway to Europe</title>
+    <meta name="description" content="Match yourself to the right EU country and visa. Compare 27 EU member states across cost of living, healthcare, safety, taxes, and 9 visa pathways. Built for Americans planning a move to Europe." />
+    <link rel="canonical" href="https://movemeto.eu/" />
 
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Move Me To EU" />
-  <meta name="twitter:description" content="Find your path to an EU passport — all 27 member states scored against your priorities." />
+    <!-- Indexing -->
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
 
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-</head>
+    <!-- Favicons (replace with your own assets when produced) -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Move Me To EU" />
+    <meta property="og:title" content="Move Me To EU — Find your visa pathway to Europe" />
+    <meta property="og:description" content="Match yourself to the right EU country and visa. Compare 27 EU member states across cost of living, healthcare, safety, taxes, and 9 visa pathways." />
+    <meta property="og:url" content="https://movemeto.eu/" />
+    <meta property="og:image" content="https://movemeto.eu/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Move Me To EU — visa pathway finder for the European Union" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Move Me To EU — Find your visa pathway to Europe" />
+    <meta name="twitter:description" content="Match yourself to the right EU country and visa. Compare 27 EU member states across cost of living, healthcare, safety, taxes, and 9 visa pathways." />
+    <meta name="twitter:image" content="https://movemeto.eu/og-image.png" />
+    <meta name="twitter:image:alt" content="Move Me To EU — visa pathway finder for the European Union" />
+
+    <!-- Preconnects -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Structured data: WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Move Me To EU",
+      "url": "https://movemeto.eu/",
+      "description": "EU visa pathway finder and country comparison tool. Match yourself to the right EU country and visa across 27 member states based on cost of living, healthcare, safety, taxes, and eligibility.",
+      "applicationCategory": "TravelApplication",
+      "operatingSystem": "Any (browser-based)",
+      "browserRequirements": "Requires JavaScript and a modern browser",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "inLanguage": "en",
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "Americans considering relocation to the European Union"
+      },
+      "featureList": [
+        "Visa pathway eligibility matching across 9 EU visa types",
+        "Country comparison across all 27 EU member states",
+        "Priority-weighted scoring on cost of living, healthcare, safety, taxes, climate, and more",
+        "Side-by-side comparison of up to 3 countries",
+        "Quiz and detailed wizard entry paths"
+      ],
+      "about": [
+        { "@type": "Thing", "name": "EU Blue Card" },
+        { "@type": "Thing", "name": "Digital Nomad Visa" },
+        { "@type": "Thing", "name": "Freelance Visa" },
+        { "@type": "Thing", "name": "Retirement Visa" },
+        { "@type": "Thing", "name": "Family Reunification Visa" },
+        { "@type": "Thing", "name": "Golden Visa" },
+        { "@type": "Thing", "name": "Student Visa" },
+        { "@type": "Thing", "name": "Job Seeker Visa" },
+        { "@type": "Thing", "name": "European Union immigration" }
+      ]
+    }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
+    <!-- Vite injects the entry script. If your existing index.html uses a different entry path, keep that line as-is. -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
