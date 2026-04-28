@@ -87,6 +87,114 @@
       ]
     }
     </script>
+
+    <!-- Structured data: FAQPage. Mirrors the FAQ_ITEMS array in MoveMeToEU.jsx.
+         Keep these answers in sync with the in-app FAQ content; if you change
+         one, change both. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which EU country is easiest for an American to move to?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "There's no single answer — it depends on your visa pathway. For remote workers with foreign income, Portugal, Spain, Greece, and Estonia all run accessible digital-nomad visas with monthly income thresholds around €2,500–€3,500. For salaried professionals, Germany's Blue Card is the highest-volume pathway in Europe with a relatively predictable approval process. For retirees with passive income, Portugal's D7 and Spain's non-lucrative visa are the long-running standards. \"Easiest\" usually means \"matches your situation best,\" not \"lowest bar.\""
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to speak the local language to qualify for an EU visa?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For the initial residence permit, almost never. Most work, remote, retirement, and investment visas are granted on the basis of income, employment, or capital — not language ability. Where language matters is later: permanent residence typically requires A2 (basic) proficiency, citizenship usually requires B1 (intermediate) and sometimes B2. Ireland, Malta, and the Netherlands offer English-friendly daily life; in most other EU countries you'll plateau socially and professionally without local language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between an EU Blue Card and a Digital Nomad visa?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The Blue Card is a salaried-employee permit that requires a binding job offer from an EU employer at a salary above the country's threshold (Germany's 2026 threshold is around €48,300, lower for shortage occupations). It counts toward EU permanent residence after roughly 33 months. A Digital Nomad visa is for people earning income from outside the host country, typically remote employees of US companies or self-employed freelancers. The Blue Card is generally the stronger long-term path because it leads cleanly to permanent residence and citizenship; nomad visas are often capped in duration."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long does it take to get EU citizenship?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Five to ten years of legal residence in the same country, depending on the country. Portugal is the EU's fastest at 5 years. Germany dropped its general track to 5 years in 2024 (3 with exceptional integration). France, Spain, Italy, and the Netherlands sit at 7–10 years. Spouses of citizens generally qualify earlier (often 3 years). EU citizenship gives you the right to live and work in all 27 member states for life."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can Americans actually retire in Europe?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The standard pathways are passive-income visas: Portugal D7, Spain non-lucrative visa, Greece's financially-independent-person visa, and Italy's elective residency. The bar is usually proof of stable income above a threshold (typically €2,000–€3,000/month for Portugal and Spain; higher for Italy) and private health insurance. Social Security income counts in countries with a US totalization agreement. The two issues most US retirees underestimate: the US still taxes its citizens worldwide, so you'll file in both countries; and Medicare doesn't cover you abroad."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does an EU visa let me work in any EU country?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No, not initially. A residence permit issued by Germany lets you live and work in Germany. To work in France you'd need a French permit. The exception is the EU Blue Card, which after 18 months of residence in the issuing country gives you the right to apply for a Blue Card in another member state under a faster process. Once you reach EU long-term resident status (after 5 years in one country) or citizenship in any member state, the entire EU opens up."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is healthcare free in Europe?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Free at point of use is closer to the truth than free outright. Most EU countries fund healthcare through payroll-style contributions or general taxation. As a new arrival on a visa, you'll typically be required to carry private health insurance for the first year or two, after which you can join the public system if your visa qualifies you. Out-of-pocket costs once you're in the public system are dramatically lower than US norms — most EU countries cap annual out-of-pocket spending in the low four figures even for serious conditions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the cheapest EU country to live in?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "By cost-of-living-plus-rent index, Bulgaria, Romania, Poland, Hungary, and Slovakia consistently sit at the bottom of the EU 27 — roughly 30–45% below the EU average and 50–65% below the US. Portugal and Greece are mid-tier; Lisbon and Athens have caught up substantially over the past decade. Ireland, Luxembourg, Denmark, the Netherlands, Germany, and France are the priciest, though still typically below US coastal-city costs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I keep my US job while living in the EU?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sometimes, with structure. Working physically from another country generally creates tax and employment-law obligations there for both you and your employer. Some US employers will sign off through an Employer of Record arrangement; many won't. The cleanest pathway when an employer can't accommodate is a Digital Nomad visa with a self-employed contractor relationship rather than W-2 employment. You'll owe US tax (citizenship-based taxation), likely owe host-country tax once you cross 183 days of presence, and need to navigate the relevant tax treaty. Talk to a cross-border tax accountant before assuming the math works."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a job offer to move to Europe?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only for some visa types. Salaried-work visas like the Blue Card require a binding offer before you apply. Job-seeker visas — Germany's Chancenkarte being the largest example — let you move first and look for work after, typically for 6–12 months. Digital Nomad, freelance, retirement, and student visas don't require a local job offer at all."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will my US degree be recognized in the EU?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Generally yes for visa purposes, sometimes with a wrinkle for regulated professions. A US bachelor's or master's degree is recognized as equivalent to an EU degree by most national immigration authorities for Blue Card and skilled-worker visa purposes — Germany requires the degree to be listed in the Anabin database. Regulated professions (medicine, law, nursing, teaching, accounting, some engineering disciplines) usually require a separate professional recognition process that can take months to years. For unregulated professions like software, design, finance, marketing, and most management, recognition is rarely the bottleneck."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does this tool work, and is the data trustworthy?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The tool is a sorting mechanism, not legal advice. You pick a pathway or take the quiz; the tool scores all 27 EU countries on a non-linear weighted average and surfaces the strongest matches with side-by-side comparisons. Visa thresholds, cost of living, healthcare and safety indices come from official government portals and reputable cross-country sources (Numbeo, Eurostat, OECD, FBI UCR for US comparators). Data is labeled as of early 2026 with a verify-at-the-portal-before-acting caveat. Immigration rules change quarterly."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
