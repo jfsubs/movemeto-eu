@@ -1627,6 +1627,10 @@ export default function MoveMeToEU() {
           Sits below the two choice cards as a clear secondary action. */}
       {(() => {
         const usQolRank = QOL.US?.overallRank ?? 23;
+        const euQolEntries = Object.entries(QOL)
+          .filter(([k, v]) => k !== "US" && v.overallRank != null);
+        const euQolBetter = euQolEntries.filter(([, v]) => v.overallRank < usQolRank).length;
+        const euQolTotal = euQolEntries.length;
         const roadEuValues = Object.values(ROAD_DEATHS);
         const roadEuAvg = roadEuValues.reduce((s, x) => s + x, 0) / roadEuValues.length;
         const roadGap = (US_ROAD_DEATHS / roadEuAvg).toFixed(1);
@@ -1699,41 +1703,41 @@ export default function MoveMeToEU() {
                   fontFamily: '"Fraunces", Georgia, serif',
                   fontSize: 32, fontWeight: 500, color: "#003399", lineHeight: 1,
                 }}>
-                  #{usQolRank}<span style={{ fontSize: 18, color: "#4A5578" }}>/28</span>
+                  {euQolBetter}<span style={{ fontSize: 18, color: "#4A5578" }}>/{euQolTotal}</span>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
-                  US quality-of-life rank
+                  EU nations rank higher than the US
                 </div>
                 <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
-                  Across six combined global indices
+                  Overall quality of life, across six global indices
                 </div>
               </div>
               <div className="why-eu-stat" style={{ padding: "4px 16px", borderRight: "1px solid #EADFC2" }}>
                 <div style={{
                   fontFamily: '"Fraunces", Georgia, serif',
-                  fontSize: 32, fontWeight: 500, color: "#8C1F1F", lineHeight: 1,
+                  fontSize: 32, fontWeight: 500, color: "#1F5D1F", lineHeight: 1,
                 }}>
                   {roadGap}×
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
-                  US road deaths vs. EU
+                  Fewer road deaths vs. US
                 </div>
                 <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
-                  Per capita, vs. the EU average
+                  Per capita, EU average vs. US
                 </div>
               </div>
               <div className="why-eu-stat" style={{ padding: "4px 0 4px 16px" }}>
                 <div style={{
                   fontFamily: '"Fraunces", Georgia, serif',
-                  fontSize: 32, fontWeight: 500, color: "#8C1F1F", lineHeight: 1,
+                  fontSize: 32, fontWeight: 500, color: "#1F5D1F", lineHeight: 1,
                 }}>
                   {homicideGap}×
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
-                  US homicide rate vs. EU
+                  Lower homicide rate vs. US
                 </div>
                 <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
-                  Per capita, vs. the EU average
+                  Per capita, EU average vs. US
                 </div>
               </div>
             </div>
