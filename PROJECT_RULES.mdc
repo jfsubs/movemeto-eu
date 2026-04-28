@@ -19,7 +19,7 @@ This file exists so any Claude session can jump into this project without re-der
 
 ## Stack & deployment (non-negotiable facts)
 
-- **Frontend:** React 18 + Vite, single `src/MoveMeToEU.jsx` file (~2,450 lines). Self-styled — no CSS framework, no component library. Styled with inline `style={}` objects and one small `<style>{css}</style>` block for pseudo-classes like `:focus-visible` and the skip link.
+- **Frontend:** React 18 + Vite, single `src/MoveMeToEU.jsx` file (~3,290 lines). Self-styled — no CSS framework, no component library. Styled with inline `style={}` objects and one small `<style>{css}</style>` block for pseudo-classes like `:focus-visible`, the skip link, and a couple of responsive breakpoints (hero band, Why EU stat-row dividers).
 - **Fonts:** Google Fonts — `Fraunces` (serif, headings) + `Manrope` (sans, body).
 - **Colors:** EU blue `#003399`, EU gold `#FFCC00`, cream `#FAF6EE` page background, primary text `#0A1F4D`, secondary `#4A5578`. Never `#8A94AD` — that failed WCAG AA and is now removed.
 - **Hosting:** Render static site (auto-deploys on every push to `main`).
@@ -27,6 +27,13 @@ This file exists so any Claude session can jump into this project without re-der
   - `movemeto.eu` → **A record** → `216.24.57.1` (NOT an ALIAS — see decision below)
   - `www.movemeto.eu` → **CNAME** → `movemeto-eu.onrender.com`
 - **Flag rendering:** Twemoji SVG via jsDelivr CDN (`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/`). Never use Unicode flag emoji directly — they render as empty boxes on Windows Chrome/Edge.
+- **Hero images:** Stored as WebP at `public/images/hero/hero-01.webp` through `hero-04.webp`, served by Vite at `/images/hero/...`. Sources are stock photos from Pexels/Pixabay. Each image must be processed before commit:
+  - Resized to ~1600px wide (desktop hero) — 800w mobile variants would be a future improvement but aren't currently produced
+  - WebP at quality 75–78; target 150–500 KB per file (Squoosh.app or `magick "$src" -resize 1600x -quality 75 "$dst.webp"`)
+  - Filename and order are referenced by index from `HERO_IMAGES` in `MoveMeToEU.jsx`; renaming a file requires updating the array
+  - Each entry needs an `alt` (specific scene description, includes city) and `credit` (e.g., `"djedj / Pixabay"`); empty credits are fine and the footer auto-suppresses them
+  - **Don't ship `.webp` files that are actually JPGs with a renamed extension.** Browsers tolerate it but file sizes balloon (multi-MB) and bandwidth is wasted. Always run an actual conversion pass.
+  - Windows hides file extensions by default. Always toggle "View → Show → File name extensions" on when working with the hero folder; double-extensions like `hero-01.webp.webp` have happened.
 
 ### Local development — the OneDrive quirk
 
@@ -94,9 +101,90 @@ Current mechanics (defined as constants near the `PRIORITIES` array in `MoveMeTo
 
 The Step 2 page leads with a **priority budget meter** card (cream/white, EU-blue progress bar that turns gold at zero remaining) showing points remaining, points used vs total available, and a "+N freed by lowering factors below 3" line that only appears when the user has actually freed something. Each individual slider that's pinned at its current cap shows a small "budget cap — lower another factor to raise this" hint inline, plus an `aria-valuetext` suffix for screen readers.
 
+Step 3 (matches results) renders a complementary **priority summary card** when any priority is above baseline 3. It lists every bumped priority in plain language ("You weighted **healthcare**, **English-friendly daily life**, and **path to citizenship** highest") and offers a "Refine with sliders →" CTA that jumps to Step 2. This card shows for both quiz finishers (who land on Step 3 after the quiz) and wizard users who actually customized Step 2 — so it's not gated behind a `quizDone` flag. Threshold to display: at least one priority above baseline.
+
 Right-edge weight chips are color-tiered for at-a-glance feedback: red at 0, gold at 4–5, blue at 3, muted tan at 1–2.
 
 The intent is friction. Users must make tradeoffs to express priorities, which is exactly the input the scoring algorithm needs to differentiate countries. Don't remove the cap; don't widen the pool past 5 without rethinking the scoring algorithm's bonus/penalty thresholds (which are tuned for the current spread of weight values users actually produce).
+
+### Entry fork: intro screen before Step 0 (April 2026)
+
+The first thing a "Find your match" visitor sees is **not** the wizard's Step 0 (visa pathway picker). It's a two-card intro screen offering a choice between:
+
+- **Take the quiz** — interactive 8-question matching path
+- **Use the detailed wizard** — the original 4-step flow (Step 0 visa pick → Step 1 profile → Step 2 priority sliders → Step 3 results)
+
+State variable: `entryMode` (`null` | `"wizard"` | `"quiz"`). When `null`, the intro fork renders. The `view === "wizard"` top-nav routing brings the user back here, not to Step 0. Step 0 itself has a small `← Back to start` link for users who want to retreat to the fork.
+
+The intro screen is dominated by a rotating hero band (see "Hero slideshow" below) with the headline "Find your match" overlaid. Below the hero, two equal cards present the choice. Below the cards, a promoted Why EU? banner (see below) provides a third path for users who want context before sorting.
+
+The wizard stepper and the floating shortlist comparison tray are both gated to `entryMode === "wizard"` so they don't appear during the quiz or on the intro screen.
+
+### Quiz design (April 2026)
+
+The quiz is an alternative entry path that produces the same Step 3 results as the wizard, with weights and profile fields pre-populated by quiz answers. **Single scoring engine, single +5 priority budget** — the quiz spends the budget through forced trade-offs rather than free-dialed sliders.
+
+**Structure: 8 questions = 1 trunk + 2 branched + 5 universal value trade-offs.**
+
+1. **Trunk** ("What's bringing you to the EU?") — 7 options, each mapped to a `selectedVisa`:
+   - Career → `bluecard`
+   - Remote → `nomad` (also sets `canRemote: true`)
+   - Self-employed → `freelance`
+   - Retirement → `retirement`
+   - Family → `family` (also sets `hasEUFamily: true`)
+   - Investment → `golden`
+   - Study → `student`
+
+2. **Branched eligibility** (questions 2–3, content varies by trunk answer) — gathers profile fields needed for visa eligibility filtering. Each branch has its own pair of questions defined in `QUIZ.branches[trunkId]`. Examples: Career branch asks employment stage and education; Remote asks income and remote-work structure; Investment asks capital tier. Some branched answers can override the trunk's `selectedVisa` (e.g., the Career branch's "relocate first, then job-hunt" option flips to `jobseeker`).
+
+3. **Universal value trade-offs** (questions 4–8, every user sees the same 5) — forced binary choices, each side bumps one priority by +1:
+   - Q4: cost (+1 affordability) vs. healthcare (+1 healthcare)
+   - Q5: ambitious city (+1 jobs) vs. outdoor pace (+1 nature)
+   - Q6: English daily life (+1 english) vs. local language for citizenship (+1 citizenship; also sets `wantsCitizenship: true`)
+   - Q7: dense walkable city (+1 transit) vs. small town pace (+1 qualityOfLife)
+   - Q8: international community (+1 international) vs. local culture (+1 culture)
+
+5 trade-offs × +1 each = exactly the `PRIORITY_BONUS_POOL` of 5. The Step 3 priority summary card displays as 100% used after handoff.
+
+**Three priorities are not directly touched by quiz answers: safety, family, climate.** They stay at baseline 3. Users who care about those should use the wizard, or click "Refine with sliders" from Step 3 to manually adjust.
+
+**Handoff to Step 3:** `finishQuiz(answers)` walks all answers, aggregates `visa` / `profile` / `weight` mutations, then sets `selectedVisa` + `profile` + `weights` and routes to Step 3 (`setEntryMode("wizard")` flips the renderer back to wizard mode for results). The user lands on the matches list with a gold "Your priorities" summary card at the top showing their top-weighted priorities and a "Refine with sliders →" CTA that jumps to Step 2 with everything pre-loaded.
+
+**Don't add weight bumps to branched questions.** It was considered (e.g., Retirement branch +1 climate) and rejected — keeps the budget math clean at exactly 5 spent, and users who care about those priorities can refine after.
+
+**Don't add a 9th question or remove one.** The 8-question structure is calibrated: one trunk for branching, two branched for eligibility, five values for budget spend. Changing the count requires re-tuning the budget allocation.
+
+### Hero slideshow (April 2026)
+
+The intro fork's hero band auto-rotates through 4 images defined in the `HERO_IMAGES` constant (Freiburg / Paris / Delft / Valencia as of launch). Behavior:
+
+- Crossfade transition (`opacity` toggle, 0.8s ease) — not a slide, less visual noise
+- 6-second cycle (`HERO_ROTATE_MS = 6000`)
+- Pauses on `mouseEnter` / `focus` (manual override via `heroPaused` state)
+- Pauses when document is hidden (background tab)
+- Honors `prefers-reduced-motion: reduce` — interval never starts; user sees a static frame indefinitely
+- Manual indicator dots below the band let any user jump directly to a slide; clicking a dot resets the auto-rotate clock
+- Only runs when `entryMode === null && view === "wizard"` — no hidden timers when the user has moved past the intro
+
+Layout is overlay-style: image + gradient + headline overlay on the hero, choice cards on cream background below. The cards never sit on the photographic background (legibility was tested and rejected).
+
+Image credits render in the page footer as a single concatenated line. The footer line only appears if any `HERO_IMAGES` entry has a non-empty `credit` string, so adding new entries with empty credits doesn't break the footer.
+
+### Why EU? promoted banner (April 2026)
+
+Below the two intro-fork cards sits a promoted card-styled banner that surfaces three Why EU? statistics:
+
+1. **#23/28** (US quality-of-life rank, computed from `QOL.US.overallRank`) — neutral blue
+2. **2.3×** (US road deaths vs. EU average, computed from `US_ROAD_DEATHS` / mean of `ROAD_DEATHS`) — red, since US disadvantage
+3. **5.9×** (US homicide rate vs. EU average, computed from `US_HOMICIDE_AVG` / mean of `EU_CRIME[*].homicide`) — red
+
+Stats are computed inline at render time from existing data structures so they stay in sync if the underlying data updates. `US_HOMICIDE_AVG = 6.4` is a multi-year average sitting between 2022 (~6.3) and 2023 (~5.7) FBI UCR figures.
+
+The headline ("How does the US actually compare? Here's the data.") and the CTA ("See the full comparison →") were written to be neutral-comparative, not persuasion-mode. The framing was deliberately rejected during design: anything that assumes the reader is "wondering why people leave" frames movement-out as the default narrative and crosses into marketing-speak the project tone explicitly avoids.
+
+Three coequal stats was a deliberate choice over a single hero number — single-stat felt like cherry-picking; three stats spread across QoL / safety dimensions present the comparison as a pattern.
+
+The original Step 0 banner ("Moving from the US? See how your state compares...") was a small one-line strip. It was promoted to a full card after the intro fork was added because the small strip was getting buried by the two choice cards above it.
 
 ### Dealbreaker thresholds: removed (April 2026)
 
@@ -135,6 +223,8 @@ The order was flipped from safety-first to QoL-first in April 2026. Leading with
 
 Only the first section on the page (QoL) omits the top divider (`paddingTop:32 / borderTop:"2px solid #EADFC2"`); the other two carry it. The homicide block is wrapped in its own `<section aria-labelledby="homicide-h">` so it matches the structural pattern of the other two (it was originally bare siblings because it didn't need a top divider when it led the page).
 
+The Why EU page is reachable from three places: the top-nav "Why EU?" tab, the bottom CTA below the intro-fork cards (promoted three-stat banner — see "Why EU? promoted banner" decision above), and the bottom-of-page CTA inside the wizard's Step 0.
+
 The original Why EU had a peer-relative tier table (Low/Moderate/High). That was removed because it misled cross-border comparisons — "Moderate" in one peer group isn't comparable to "Moderate" in another. Don't reintroduce tier tables.
 
 ### DNS: A record, not ALIAS
@@ -167,6 +257,8 @@ Country-specific researched data lives in the `VISA_DETAILS` object keyed by `[c
 **Countries with researched entries (as of April 2026):** DE, PT, ES, NL, IE, MT, FR, IT, GR, CZ, EE (11 of 27).
 
 **Fallback countries (show "General guidance" amber chip):** AT, BE, BG, HR, CY, DK, FI, HU, LV, LT, LU, PL, RO, SK, SI, SE (16 of 27).
+
+**Within-country coverage is uneven.** No country has entries for all 9 visa types. Notably, no country has researched entries for `family`, `student`, or `jobseeker` — those three visa types fall back to defaults across all 27 countries. The full coverage matrix (which countries cover which visas) can be regenerated by walking the `VISA_DETAILS` object; a known good starting place is grepping for top-level `"XX: {"` patterns.
 
 When a user requests new country data, research via web search of official portals + at least one secondary source (Fragomen, Jobbatical, CitizenRemote, etc.). Never fabricate specific thresholds — if data isn't found, use the default.
 
@@ -221,6 +313,11 @@ Decisions that have been tried and rejected, or suggestions that waste time:
 11. **Don't remove the Step 2 priority budget cap.** Free 0–5 sliders for all 13 factors collapse the scoring algorithm because everyone sets everything to 5. The friction is the feature.
 12. **Don't reintroduce dealbreaker thresholds.** Removed April 2026 — replaced by the implicit weighted-5 penalty. See "Dealbreaker thresholds: removed" decision above.
 13. **Don't widen `PRIORITY_BONUS_POOL` past 5 casually.** The bonus/penalty thresholds in the scoring algorithm are tuned for the spread of weight distributions users actually produce under a 5-point budget. Changing the pool requires re-tuning.
+14. **Don't bypass the intro fork.** "Find your match" routes to the entry-mode picker (`entryMode === null`), not directly to wizard Step 0. Top-nav "Pathway Finder" and Why EU's "Find your match →" CTA both reset `entryMode` to `null` for this reason.
+15. **Don't add weight bumps to branched quiz questions.** The +5 priority budget is spent exactly by the 5 universal value trade-offs. Branched eligibility questions populate `profile` and (sometimes) `selectedVisa`, never `weights`. Adding bumps breaks the 100%-used budget invariant on Step 3.
+16. **Don't ship `.webp` files that are actually JPGs.** Always run an actual conversion pass (Squoosh or `magick`). Renaming `.jpg` to `.webp` works in browsers but balloons file size by 20–50× and defeats the point of WebP.
+17. **Don't auto-rotate the hero without honoring `prefers-reduced-motion`.** The current implementation disables the interval entirely when the media query matches. Don't replace this with a "slow rotation" — reduced-motion users want no motion, not less motion.
+18. **Don't use Unicode emoji in the hero or as visual UI flourish.** The intro-fork card icons (`◇` / `◆`) are Unicode geometric symbols, same convention as visa icons. Emoji break on Windows browsers and add an inconsistent vendor-styling layer.
 
 ---
 
@@ -228,7 +325,7 @@ Decisions that have been tried and rejected, or suggestions that waste time:
 
 Things mentioned in prior conversations but not yet built:
 
-- **Expand VISA_DETAILS to remaining 16 countries.** Next priorities based on US-American relocation volume: AT, BE, DK, FI, LU, SE. After that: PL, HU, HR, SK, SI. Last: BG, CY, LV, LT, RO.
+- **Expand VISA_DETAILS to remaining 16 countries.** 11 of 27 currently have country-specific entries (DE, PT, ES, NL, IE, MT, FR, IT, GR, CZ, EE); 16 fall back to defaults (AT, BE, BG, HR, CY, DK, FI, HU, LV, LT, LU, PL, RO, SK, SI, SE). Coverage within the 11 is also uneven — no country has all 9 visa types. Strategic options were debated in April 2026 and the decided approach was: by visa type rather than by country, starting with Blue Card across all 27, then DNV. **Constraint:** Claude's training data on EU visa specifics (income thresholds, processing times) is unreliable and changes annually. Don't fabricate country-specific numbers. The honest workflow is: Justin researches one country at a time from official portals; Claude formats the result into the six-field schema (`income`, `documents`, `processing`, `duration`, `pathToPR`, `family`) and integrates it. When Justin can't pull current data, leave the entry as a default fallback rather than ship guesses.
 - **Soft-launch vs SEO-discoverable decision.** Add `<meta name="robots" content="noindex, nofollow">` if soft launch is desired; currently indexable by default.
 - **OG image.** 1200×630px link-preview image referenced in `index.html` but not yet created. Design should use EU flag backdrop + "Move Me To EU" wordmark + tagline.
 - **sitemap.xml and robots.txt in `public/`.** Templates exist in `DEPLOYMENT_GUIDE.md`.
@@ -284,4 +381,4 @@ When uncertain about tone, err toward the tone of *The Economist* or a thoughtfu
 
 ---
 
-*Last updated: April 26, 2026. Update this file when architectural decisions change.*
+*Last updated: April 27, 2026. Update this file when architectural decisions change.*
