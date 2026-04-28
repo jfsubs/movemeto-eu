@@ -1756,7 +1756,7 @@ export default function MoveMeToEU() {
         padding: "16px 20px 4px",
         lineHeight: 1.5,
       }}>
-        Stuck between the two paths, or have a question we haven't answered? Email{" "}
+        Want personalized help to answer your questions? Email{" "}
         <a href="mailto:info@movemeto.eu" style={{ color:"#003399", fontWeight:600 }}>info@movemeto.eu</a>.
       </div>
     </div>
@@ -2448,6 +2448,24 @@ export default function MoveMeToEU() {
           </div>
         )}
 
+        {/* Contact banner — sits at the top of Step 3 (after the gold priority
+            summary, before the matches list) so users see the offer of help
+            before diving into the data. EU-blue left border distinguishes it
+            from the gold priorities card above. */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #E8DFC9",
+          borderLeft: "4px solid #003399",
+          borderRadius: 4,
+          padding: "16px 20px",
+          marginBottom: 24,
+        }}>
+          <p style={{ fontSize: 14, color: "#0A1F4D", lineHeight: 1.5, margin: 0 }}>
+            Email <a href="mailto:info@movemeto.eu" style={{ color:"#003399", fontWeight:600 }}>info@movemeto.eu</a>{" "}
+            for guidance and support on thinking through what comes next. We read every message.
+          </p>
+        </div>
+
         {eligible.map(renderResultRow)}
 
         {ineligible.length > 0 && (
@@ -2470,40 +2488,6 @@ export default function MoveMeToEU() {
             </div>
           </details>
         )}
-
-        {/* Contact card — sits after the matches list and any "didn't match"
-            section, before the nav buttons. EU-blue left border to distinguish
-            from the gold priority summary card at the top of Step 3 (different
-            colour signals different intent: gold = your inputs; blue = next
-            step). Honest copy: a second pair of eyes on a shortlist, not legal
-            advice — those should still go to a consulate or immigration
-            lawyer per the footer disclaimer. */}
-        <section
-          aria-labelledby="contact-cta-h"
-          style={{
-            marginTop: 32,
-            background: "#fff",
-            border: "1px solid #E8DFC9",
-            borderLeft: "4px solid #003399",
-            borderRadius: 4,
-            padding: "20px 24px",
-          }}>
-          <h3 id="contact-cta-h" style={{
-            fontFamily: '"Fraunces", Georgia, serif',
-            fontSize: 18,
-            fontWeight: 600,
-            color: "#0A1F4D",
-            margin: "0 0 6px",
-            lineHeight: 1.3,
-          }}>
-            Questions about your matches, or unsure where to go from here?
-          </h3>
-          <p style={{ fontSize: 14, color: "#4A5578", lineHeight: 1.5, margin: 0 }}>
-            Email <a href="mailto:info@movemeto.eu" style={{ color:"#003399", fontWeight:600 }}>info@movemeto.eu</a>{" "}
-            if you'd like a second pair of eyes on your shortlist or want to think through what comes next.
-            We read every message. For binding visa advice, a consulate or immigration lawyer is still the right call.
-          </p>
-        </section>
 
         <div style={S.nav}>
           <button type="button" style={S.btnGhost} onClick={startOver}>← Start over</button>
