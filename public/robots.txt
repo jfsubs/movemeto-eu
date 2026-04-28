@@ -1,0 +1,11 @@
+# Move Me To EU — robots.txt
+# https://movemeto.eu
+
+User-agent: *
+Allow: /
+
+# Block crawlers from the temporary Render preview if it ever 200s here
+# (no-op on the apex; harmless at the apex, useful if mirrored)
+Disallow: /*onrender.com*
+
+Sitemap: https://movemeto.eu/sitemap.xml
