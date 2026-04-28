@@ -120,13 +120,18 @@ The intro screen is dominated by a rotating hero band (see "Hero slideshow" belo
 
 The wizard stepper and the floating shortlist comparison tray are both gated to `entryMode === "wizard"` so they don't appear during the quiz or on the intro screen.
 
-### Quiz design (April 2026)
+### Quiz design (April 2026, revised April 28 2026 for multi-select trunk)
 
 The quiz is an alternative entry path that produces the same Step 3 results as the wizard, with weights and profile fields pre-populated by quiz answers. **Single scoring engine, single +5 priority budget** — the quiz spends the budget through forced trade-offs rather than free-dialed sliders.
 
-**Structure: 8 questions = 1 trunk + 2 branched + 5 universal value trade-offs.**
+**Structure: 8 questions if the user picks one trunk option, 6 if they pick more than one.**
 
-1. **Trunk** ("What's bringing you to the EU?") — 7 options, each mapped to a `selectedVisa`:
+- Single-trunk path: 1 trunk + 2 branched + 5 universal value trade-offs = 8.
+- Multi-trunk path: 1 trunk + 5 universal value trade-offs = 6. Branched eligibility is skipped because those questions are per-visa-type and don't make coherent sense across multiple trunks (e.g., asking "where are you in your job search?" for a user who picked Career *and* Retirement is incoherent).
+
+The 5 value trade-offs are universal in both paths, so the +5 priority budget is spent identically regardless of how many trunks were picked. The Step 3 priority summary card still displays 100% used after either handoff.
+
+1. **Trunk** ("What's bringing you to the EU?") — 7 options, **multi-select**. Each selected option contributes its visa ID to `selectedVisas` (an array; empty = "show every pathway"):
    - Career → `bluecard`
    - Remote → `nomad` (also sets `canRemote: true`)
    - Self-employed → `freelance`
@@ -135,24 +140,34 @@ The quiz is an alternative entry path that produces the same Step 3 results as t
    - Investment → `golden`
    - Study → `student`
 
-2. **Branched eligibility** (questions 2–3, content varies by trunk answer) — gathers profile fields needed for visa eligibility filtering. Each branch has its own pair of questions defined in `QUIZ.branches[trunkId]`. Examples: Career branch asks employment stage and education; Remote asks income and remote-work structure; Investment asks capital tier. Some branched answers can override the trunk's `selectedVisa` (e.g., the Career branch's "relocate first, then job-hunt" option flips to `jobseeker`).
+   The trunk question uses tap-to-toggle on each option (`aria-pressed` reflects state) and an explicit "Continue → (N)" button at the bottom. Continue is disabled until ≥1 option is selected. Auto-advance only happens for non-trunk questions.
 
-3. **Universal value trade-offs** (questions 4–8, every user sees the same 5) — forced binary choices, each side bumps one priority by +1:
-   - Q4: cost (+1 affordability) vs. healthcare (+1 healthcare)
-   - Q5: ambitious city (+1 jobs) vs. outdoor pace (+1 nature)
-   - Q6: English daily life (+1 english) vs. local language for citizenship (+1 citizenship; also sets `wantsCitizenship: true`)
-   - Q7: dense walkable city (+1 transit) vs. small town pace (+1 qualityOfLife)
-   - Q8: international community (+1 international) vs. local culture (+1 culture)
+2. **Branched eligibility** (questions 2–3, only when exactly one trunk is selected, content varies by trunk answer) — gathers profile fields needed for visa eligibility filtering. Each branch has its own pair of questions defined in `QUIZ.branches[trunkId]`. Examples: Career branch asks employment stage and education; Remote asks income and remote-work structure; Investment asks capital tier. Some branched answers can override the single trunk's visa (e.g., the Career branch's "relocate first, then job-hunt" option flips `bluecard` → `jobseeker`).
 
-5 trade-offs × +1 each = exactly the `PRIORITY_BONUS_POOL` of 5. The Step 3 priority summary card displays as 100% used after handoff.
+3. **Universal value trade-offs** (5 questions, every user sees the same 5 in either path) — forced binary choices, each side bumps one priority by +1:
+   - cost (+1 affordability) vs. healthcare (+1 healthcare)
+   - ambitious city (+1 jobs) vs. outdoor pace (+1 nature)
+   - English daily life (+1 english) vs. local language for citizenship (+1 citizenship; also sets `wantsCitizenship: true`)
+   - dense walkable city (+1 transit) vs. small town pace (+1 qualityOfLife)
+   - international community (+1 international) vs. local culture (+1 culture)
+
+5 trade-offs × +1 each = exactly the `PRIORITY_BONUS_POOL` of 5.
 
 **Three priorities are not directly touched by quiz answers: safety, family, climate.** They stay at baseline 3. Users who care about those should use the wizard, or click "Refine with sliders" from Step 3 to manually adjust.
 
-**Handoff to Step 3:** `finishQuiz(answers)` walks all answers, aggregates `visa` / `profile` / `weight` mutations, then sets `selectedVisa` + `profile` + `weights` and routes to Step 3 (`setEntryMode("wizard")` flips the renderer back to wizard mode for results). The user lands on the matches list with a gold "Your priorities" summary card at the top showing their top-weighted priorities and a "Refine with sliders →" CTA that jumps to Step 2 with everything pre-loaded.
+**Quiz flow is built dynamically.** The `quizFlow` array is rebuilt on every render from `quizAnswers.trunk.length`: trunk + (branches if length === 1) + 5 values. `quizStep` indexes into this flow. If a user steps back to the trunk and changes the count, the flow rebuilds and the next "Continue" lands them on the right next question. Stale answers from the no-longer-applicable path stay in `quizAnswers` but are ignored by `finishQuiz`.
+
+**Handoff to Step 3:** `finishQuiz(answers)` has two paths. Single-trunk preserves the original override semantics (trunk visa → branch may override). Multi-trunk collects every selected trunk's visa into `newSelectedVisas` and merges profile fields; branches are skipped so no overrides apply. Both paths end with `setSelectedVisas(newSelectedVisas)` + `setProfile(newProfile)` + `setWeights(newWeights)` + `setEntryMode("wizard")` + `setStep(3)`. The user lands on the matches list with a gold "Your priorities" summary card showing their top-weighted priorities and a "Refine with sliders →" CTA.
 
 **Don't add weight bumps to branched questions.** It was considered (e.g., Retirement branch +1 climate) and rejected — keeps the budget math clean at exactly 5 spent, and users who care about those priorities can refine after.
 
-**Don't add a 9th question or remove one.** The 8-question structure is calibrated: one trunk for branching, two branched for eligibility, five values for budget spend. Changing the count requires re-tuning the budget allocation.
+**Don't change the 5-value trade-off count.** That number drives the +5 priority budget spend and is the load-bearing calibration. The trunk and branched-eligibility counts are not as load-bearing — the multi-trunk path already drops branches with no scoring consequence — but adding more trade-offs would over-spend the budget and removing one would under-spend it.
+
+### `selectedVisas`: array, not single string (April 28 2026)
+
+`selectedVisa` (single string or null) was replaced by `selectedVisas` (array). Empty array means "show every pathway"; an array of N filters Step 3 to those N pathways. The wizard's Step 0 still single-selects via `setSelectedVisas([])` ("show me everything") or `setSelectedVisas([v.id])` (a specific visa); only the quiz's multi-trunk path writes arrays of length > 1. The eligibility filter at the matching engine reads `selectedVisas.length > 0 && !selectedVisas.includes(v.id)` to decide whether to filter a country's visa out of its `availableVisas` list.
+
+Don't refactor this back to a single string. The array shape is what makes "see more than one pathway per country" possible without a parallel state.
 
 ### Hero slideshow (April 2026)
 
@@ -381,4 +396,4 @@ When uncertain about tone, err toward the tone of *The Economist* or a thoughtfu
 
 ---
 
-*Last updated: April 27, 2026. Update this file when architectural decisions change.*
+*Last updated: April 28, 2026. Update this file when architectural decisions change.*

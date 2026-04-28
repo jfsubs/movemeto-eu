@@ -591,20 +591,24 @@ const computeNetSpent = (w) =>
   PRIORITIES.reduce((sum, p) => sum + ((w[p.id] ?? PRIORITY_BASELINE) - PRIORITY_BASELINE), 0);
 
 /* ---------- QUIZ DEFINITION (interactive matching path) ------------------ */
-/* The quiz is an alternative entry to the Pathway Finder. Every user gets exactly
-   8 questions: 1 trunk + 2 branched (varies by trunk answer) + 5 universal value
-   tradeoffs. Each tradeoff bumps one priority by +1 from baseline 3, so the 5
-   tradeoffs spend exactly the PRIORITY_BONUS_POOL. Quiz answers populate
-   `selectedVisa`, profile fields (education/income/capital/canRemote/hasEUFamily/
-   wantsCitizenship), and weights — then hand off to the existing Step 3 results
-   view. From there, "Refine with sliders" jumps to wizard Step 2 with everything
-   pre-filled. This keeps a single scoring engine and a single +5 budget. */
+/* The quiz is an alternative entry to the Pathway Finder. The trunk question is
+   multi-select: pick one for the full guided flow (1 trunk + 2 branched + 5
+   value trade-offs = 8 questions), or pick multiple to see several pathways on
+   each country (1 trunk + 5 value trade-offs = 6 questions; branched eligibility
+   is skipped because those questions are per-visa-type and don't make coherent
+   sense across multiple trunks). Each value trade-off bumps one priority by +1
+   from baseline 3, so the 5 trade-offs spend exactly the PRIORITY_BONUS_POOL
+   regardless of how many trunks were picked. Quiz answers populate `selectedVisas`
+   (array — empty means "show all"), profile fields (education/income/capital/
+   canRemote/hasEUFamily/wantsCitizenship), and weights — then hand off to the
+   existing Step 3 results view. From there, "Refine with sliders" jumps to wizard
+   Step 2 with everything pre-filled. Single scoring engine, single +5 budget. */
 
 const QUIZ = {
   trunk: {
     id: "trunk",
     title: "What's bringing you to the EU?",
-    desc: "Pick the closest fit. The next questions adapt to your situation.",
+    desc: "Pick all that apply. If you select one, the next questions adapt to your situation; if you select more than one, we'll skip ahead to the priority questions and show every matching pathway on each country.",
     options: [
       { id: "career",       label: "Career or a job opportunity",                              visa: "bluecard"   },
       { id: "remote",       label: "Remote work for a non-EU employer",                        visa: "nomad",      profile: { canRemote: true } },
@@ -759,7 +763,9 @@ const QUIZ = {
   ],
 };
 
-const QUIZ_TOTAL_QUESTIONS = 8; // 1 trunk + 2 branched + 5 values
+// Maximum quiz length (single-trunk path): 1 trunk + 2 branched + 5 values.
+// The actual total can be 6 (multi-trunk skips branches) — see `quizFlow` below.
+const QUIZ_MAX_QUESTIONS = 8;
 
 /* ---------- OFFICIAL GOVERNMENT PORTALS ---------------------------------- */
 /* English-accessible official sources where possible; fallback to authoritative national portal. */
@@ -986,7 +992,11 @@ export default function MoveMeToEU() {
   const [step, setStep] = useState(0);
   const [view, setView] = useState("wizard"); // "wizard" | "whyEU"
   const [userState, setUserState] = useState("Virginia");
-  const [selectedVisa, setSelectedVisa] = useState(null);
+  // selectedVisas: array of visa IDs to filter to. Empty array = "show every
+  // pathway available across all 27 countries." A single-element array is the
+  // wizard's Step 0 single-select case. Multi-element arrays come from the
+  // quiz when a user picks multiple reasons for moving.
+  const [selectedVisas, setSelectedVisas] = useState([]);
   const [profile, setProfile] = useState({
     education: "bachelors", income: "60to100", capital: "under50",
     age: 35, yearsExp: 10,
@@ -1005,8 +1015,8 @@ export default function MoveMeToEU() {
      "quiz" = engaged with that path. The quiz funnels into the wizard's Step 3
      (matches) once finished, with weights and profile pre-populated. */
   const [entryMode, setEntryMode] = useState(null); // null | "wizard" | "quiz"
-  const [quizStep, setQuizStep] = useState(0);      // 0..7 across the 8 questions
-  const [quizAnswers, setQuizAnswers] = useState({}); // { trunk: "career", career_stage: "sponsored", ... }
+  const [quizStep, setQuizStep] = useState(0);      // 0..(quizFlow.length-1)
+  const [quizAnswers, setQuizAnswers] = useState({}); // { trunk: ["career"], career_stage: "sponsored", ... }
 
   const mainRef = useRef(null);
   const [animateIn, setAnimateIn] = useState(true);
@@ -1072,81 +1082,125 @@ export default function MoveMeToEU() {
   const pointsRemaining = PRIORITY_BONUS_POOL - netSpent;
 
   /* ---------- Quiz helpers ----------
-     Branched-eligibility hybrid: trunk → 2 branched eligibility → 5 universal value
-     trade-offs. Each value trade-off bumps one priority by +1 (5 questions × +1 =
-     exactly the PRIORITY_BONUS_POOL of 5). On finish, all answers fold into the
-     wizard's existing state (selectedVisa, profile, weights) and the user lands on
-     the existing Step 3 results. From there, "Refine with sliders" jumps to Step 2
-     with everything pre-filled. */
+     Multi-select trunk hybrid: trunk → (only if exactly one trunk picked) 2
+     branched eligibility → 5 universal value trade-offs. Each value trade-off
+     bumps one priority by +1 (5 questions × +1 = exactly the PRIORITY_BONUS_POOL
+     of 5) regardless of how many trunks were picked. Multi-trunk skips branched
+     eligibility because those questions are per-visa-type (e.g., "where are you
+     in your job search?" is incoherent for someone who picked Career *and*
+     Retirement). On finish, all answers fold into the wizard's existing state
+     (selectedVisas, profile, weights) and the user lands on the existing Step 3
+     results. From there, "Refine with sliders" jumps to Step 2 with everything
+     pre-filled. */
 
-  const trunkAnswerId = quizAnswers.trunk || null;
-  const trunkOption = trunkAnswerId
-    ? QUIZ.trunk.options.find(o => o.id === trunkAnswerId)
-    : null;
-  const activeBranch = trunkOption ? QUIZ.branches[trunkOption.id] : null;
+  // Trunk selections are an array. We tolerate the legacy string shape from any
+  // mid-flight state for safety, but everything written by the new handler is an
+  // array.
+  const trunkAnswers = Array.isArray(quizAnswers.trunk)
+    ? quizAnswers.trunk
+    : (quizAnswers.trunk ? [quizAnswers.trunk] : []);
+  const singleTrunkId = trunkAnswers.length === 1 ? trunkAnswers[0] : null;
+  const activeBranch = singleTrunkId ? QUIZ.branches[singleTrunkId] : null;
 
-  // Map quizStep (0..7) onto a concrete question. Steps 1-2 depend on the
-  // trunk answer, so we read it from quizAnswers rather than tracking branch
-  // state separately.
-  const getQuizQuestion = () => {
-    if (quizStep === 0) return { kind: "trunk", q: QUIZ.trunk };
-    if ((quizStep === 1 || quizStep === 2) && activeBranch) {
-      return { kind: "branch", q: activeBranch[quizStep - 1] };
-    }
-    if (quizStep >= 3 && quizStep <= 7) {
-      return { kind: "values", q: QUIZ.values[quizStep - 3] };
-    }
-    return null;
-  };
+  // Build the live question flow. After the trunk, branched eligibility runs
+  // only when the user has picked exactly one trunk option; multi-trunk users
+  // skip straight to the value trade-offs.
+  const quizFlow = [{ kind: "trunk", q: QUIZ.trunk }];
+  if (activeBranch) {
+    activeBranch.forEach(q => quizFlow.push({ kind: "branch", q }));
+  }
+  QUIZ.values.forEach(q => quizFlow.push({ kind: "values", q }));
+
+  const quizTotalQuestions = quizFlow.length; // 8 for single-trunk, 6 for multi
+  const getQuizQuestion = () => quizFlow[quizStep] || null;
 
   // Apply all quiz answers to wizard state, then route to Step 3 results.
-  // Trunk and branched options can carry { visa } or { profile } keys; values
-  // options carry { weight } and optionally { profile }.
+  // Trunk options can carry { visa } or { profile }; branched options can carry
+  // { visa } (override) or { profile }; values options carry { weight } and
+  // optionally { profile }.
   const finishQuiz = (answers) => {
-    let newSelectedVisa = null;
     const newProfile = { ...profile };
     const newWeights = Object.fromEntries(
       PRIORITIES.map(p => [p.id, PRIORITY_BASELINE])
     );
+    let newSelectedVisas = [];
 
-    const applyOption = (opt) => {
-      if (!opt) return;
-      if (opt.visa) newSelectedVisa = opt.visa;
-      if (opt.profile) Object.assign(newProfile, opt.profile);
-      if (opt.weight) {
-        newWeights[opt.weight] = Math.min(5, (newWeights[opt.weight] || PRIORITY_BASELINE) + 1);
-      }
-    };
+    const trunkIds = Array.isArray(answers.trunk)
+      ? answers.trunk
+      : (answers.trunk ? [answers.trunk] : []);
+    const trunkOpts = trunkIds
+      .map(id => QUIZ.trunk.options.find(o => o.id === id))
+      .filter(Boolean);
 
-    const trunkOpt = QUIZ.trunk.options.find(o => o.id === answers.trunk);
-    applyOption(trunkOpt);
-
-    if (trunkOpt) {
+    if (trunkOpts.length === 1) {
+      // Single-trunk path: preserve the original override semantics. The trunk
+      // sets the visa; a branched answer (e.g. Career → "preseek") may override
+      // it (e.g. bluecard → jobseeker).
+      const trunkOpt = trunkOpts[0];
+      let v = trunkOpt.visa || null;
+      if (trunkOpt.profile) Object.assign(newProfile, trunkOpt.profile);
       const branch = QUIZ.branches[trunkOpt.id];
       if (branch) {
         branch.forEach(q => {
           const opt = q.options.find(o => o.id === answers[q.id]);
-          applyOption(opt);
+          if (!opt) return;
+          if (opt.visa) v = opt.visa;
+          if (opt.profile) Object.assign(newProfile, opt.profile);
         });
       }
+      if (v) newSelectedVisas = [v];
+    } else if (trunkOpts.length > 1) {
+      // Multi-trunk path: collect every trunk's visa and merge profile fields;
+      // branches were skipped, so no overrides to apply.
+      trunkOpts.forEach(opt => {
+        if (opt.visa && !newSelectedVisas.includes(opt.visa)) {
+          newSelectedVisas.push(opt.visa);
+        }
+        if (opt.profile) Object.assign(newProfile, opt.profile);
+      });
     }
+    // (trunkOpts.length === 0 shouldn't happen — Continue is gated on ≥1 — but
+    // we leave newSelectedVisas as [] which means "show every pathway".)
 
     QUIZ.values.forEach(q => {
       const opt = q.options.find(o => o.id === answers[q.id]);
-      applyOption(opt);
+      if (!opt) return;
+      if (opt.profile) Object.assign(newProfile, opt.profile);
+      if (opt.weight) {
+        newWeights[opt.weight] = Math.min(5, (newWeights[opt.weight] || PRIORITY_BASELINE) + 1);
+      }
     });
 
-    setSelectedVisa(newSelectedVisa);
+    setSelectedVisas(newSelectedVisas);
     setProfile(newProfile);
     setWeights(newWeights);
     setEntryMode("wizard"); // hand off to the existing wizard rendering
     setStep(3);
   };
 
+  // Toggle a trunk option in/out of the selection. Used by the multi-select
+  // trunk question — does NOT auto-advance the quiz.
+  const toggleTrunkOption = (optionId) => {
+    const current = trunkAnswers;
+    const next = current.includes(optionId)
+      ? current.filter(id => id !== optionId)
+      : [...current, optionId];
+    setQuizAnswers({ ...quizAnswers, trunk: next });
+  };
+
+  // Advance from the trunk question once the user has picked at least one
+  // option and tapped Continue.
+  const advanceFromTrunk = () => {
+    if (trunkAnswers.length === 0) return;
+    setQuizStep(1);
+  };
+
+  // Single-select handler for branched + values questions. Auto-advances or
+  // finishes the quiz on the last question.
   const handleQuizAnswer = (questionId, optionId) => {
     const newAnswers = { ...quizAnswers, [questionId]: optionId };
     setQuizAnswers(newAnswers);
-    if (quizStep === QUIZ_TOTAL_QUESTIONS - 1) {
+    if (quizStep === quizTotalQuestions - 1) {
       finishQuiz(newAnswers);
     } else {
       setQuizStep(quizStep + 1);
@@ -1170,7 +1224,7 @@ export default function MoveMeToEU() {
     setStep(0);
     setQuizStep(0);
     setQuizAnswers({});
-    setSelectedVisa(null);
+    setSelectedVisas([]);
     setProfile({
       education: "bachelors", income: "60to100", capital: "under50",
       age: 35, yearsExp: 10,
@@ -1216,7 +1270,7 @@ export default function MoveMeToEU() {
           .map(vid => VISAS.find(v => v.id === vid))
           .filter(Boolean)
           .filter(v => {
-            if (selectedVisa && v.id !== selectedVisa) return false;
+            if (selectedVisas.length > 0 && !selectedVisas.includes(v.id)) return false;
             if (v.minEducation) {
               const required = EDUCATION.find(e => e.id === v.minEducation)?.rank ?? 0;
               if (edRank < required) return false;
@@ -1285,7 +1339,7 @@ export default function MoveMeToEU() {
         if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
         return b.score - a.score;
       });
-  }, [step, comparing, view, selectedVisa, profile, weights]);
+  }, [step, comparing, view, selectedVisas, profile, weights]);
 
   const shortlistedResults = useMemo(
     () => shortlist.map(code => results.find(r => r.country.code === code)).filter(Boolean),
@@ -1692,10 +1746,24 @@ export default function MoveMeToEU() {
   const renderQuiz = () => {
     const current = getQuizQuestion();
     if (!current) return null;
-    const { q } = current;
+    const { kind, q } = current;
+    const isTrunk = kind === "trunk";
     const questionNumber = quizStep + 1;
-    const currentAnswer = quizAnswers[q.id];
-    const progressPct = Math.round((questionNumber / QUIZ_TOTAL_QUESTIONS) * 100);
+    const totalQuestions = quizTotalQuestions;
+    const progressPct = Math.round((questionNumber / totalQuestions) * 100);
+
+    // For the trunk question we render multi-select toggle behavior; everything
+    // else is single-select with auto-advance.
+    const trunkSelected = isTrunk ? trunkAnswers : null;
+    const currentAnswer = isTrunk ? null : quizAnswers[q.id];
+    const isOptionSelected = (opt) => isTrunk
+      ? trunkSelected.includes(opt.id)
+      : currentAnswer === opt.id;
+    const onOptionClick = (opt) => isTrunk
+      ? toggleTrunkOption(opt.id)
+      : handleQuizAnswer(q.id, opt.id);
+
+    const trunkCount = trunkSelected ? trunkSelected.length : 0;
 
     return (
       <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
@@ -1709,7 +1777,7 @@ export default function MoveMeToEU() {
               fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase",
               color: "#4A5578", fontWeight: 700,
             }}>
-              Question {questionNumber} of {QUIZ_TOTAL_QUESTIONS}
+              Question {questionNumber} of {totalQuestions}
             </div>
             <button
               type="button"
@@ -1725,9 +1793,9 @@ export default function MoveMeToEU() {
           <div
             role="progressbar"
             aria-valuemin={0}
-            aria-valuemax={QUIZ_TOTAL_QUESTIONS}
+            aria-valuemax={totalQuestions}
             aria-valuenow={questionNumber}
-            aria-valuetext={`Question ${questionNumber} of ${QUIZ_TOTAL_QUESTIONS}`}
+            aria-valuetext={`Question ${questionNumber} of ${totalQuestions}`}
             style={{ height: 6, background: "#EADFC2", borderRadius: 999, overflow: "hidden" }}>
             <div style={{
               width: `${progressPct}%`,
@@ -1750,33 +1818,57 @@ export default function MoveMeToEU() {
             margin: "0 auto",
           }}
           role="group"
-          aria-label={q.title}>
-          {q.options.map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              aria-pressed={currentAnswer === opt.id}
-              onClick={() => handleQuizAnswer(q.id, opt.id)}
-              style={{
-                ...S.card,
-                ...(currentAnswer === opt.id ? S.cardActive : {}),
-                padding: "18px 20px",
-                fontSize: 15,
-                lineHeight: 1.45,
-                fontWeight: 500,
-              }}>
-              {opt.label}
-            </button>
-          ))}
+          aria-label={isTrunk ? `${q.title} — select all that apply` : q.title}>
+          {q.options.map(opt => {
+            const selected = isOptionSelected(opt);
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => onOptionClick(opt)}
+                style={{
+                  ...S.card,
+                  ...(selected ? S.cardActive : {}),
+                  padding: "18px 20px",
+                  fontSize: 15,
+                  lineHeight: 1.45,
+                  fontWeight: 500,
+                }}>
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
 
         <div style={{ ...S.nav, maxWidth: 760, margin: "32px auto 0" }}>
           <button type="button" style={S.btnGhost} onClick={goBackQuiz}>
             ← {quizStep === 0 ? "Back to start" : "Back"}
           </button>
-          <span style={{ fontSize: 13, color: "#4A5578", alignSelf: "center" }}>
-            Tap an answer to continue
-          </span>
+          {isTrunk ? (
+            <button
+              type="button"
+              style={{
+                ...S.btn,
+                opacity: trunkCount === 0 ? 0.4 : 1,
+                cursor: trunkCount === 0 ? "not-allowed" : "pointer",
+              }}
+              onClick={advanceFromTrunk}
+              disabled={trunkCount === 0}
+              aria-label={
+                trunkCount === 0
+                  ? "Continue — pick at least one reason first"
+                  : trunkCount === 1
+                    ? "Continue with 1 reason selected"
+                    : `Continue with ${trunkCount} reasons selected`
+              }>
+              Continue →{trunkCount > 0 ? ` (${trunkCount})` : ""}
+            </button>
+          ) : (
+            <span style={{ fontSize: 13, color: "#4A5578", alignSelf: "center" }}>
+              Tap an answer to continue
+            </span>
+          )}
         </div>
       </div>
     );
@@ -1817,22 +1909,25 @@ export default function MoveMeToEU() {
         to you across the 27 EU member states.
       </p>
       <div style={S.grid} role="group" aria-label="Visa pathway — select one option">
-        <button type="button" aria-pressed={selectedVisa === null}
-          style={{ ...S.card, ...(selectedVisa === null ? S.cardActive : {}) }}
-          onClick={() => setSelectedVisa(null)}>
+        <button type="button" aria-pressed={selectedVisas.length === 0}
+          style={{ ...S.card, ...(selectedVisas.length === 0 ? S.cardActive : {}) }}
+          onClick={() => setSelectedVisas([])}>
           <span style={S.icon} aria-hidden="true">∞</span>
           <div style={S.cardTitle}>Show me everything</div>
           <div style={S.cardDesc}>I'm open to any pathway — show which ones fit my profile.</div>
         </button>
-        {VISAS.map(v => (
-          <button key={v.id} type="button" aria-pressed={selectedVisa === v.id}
-            style={{ ...S.card, ...(selectedVisa === v.id ? S.cardActive : {}) }}
-            onClick={() => setSelectedVisa(v.id)}>
-            <span style={S.icon} aria-hidden="true">{v.icon}</span>
-            <div style={S.cardTitle}>{v.label}</div>
-            <div style={S.cardDesc}>{v.desc}</div>
-          </button>
-        ))}
+        {VISAS.map(v => {
+          const isSelected = selectedVisas.length === 1 && selectedVisas[0] === v.id;
+          return (
+            <button key={v.id} type="button" aria-pressed={isSelected}
+              style={{ ...S.card, ...(isSelected ? S.cardActive : {}) }}
+              onClick={() => setSelectedVisas([v.id])}>
+              <span style={S.icon} aria-hidden="true">{v.icon}</span>
+              <div style={S.cardTitle}>{v.label}</div>
+              <div style={S.cardDesc}>{v.desc}</div>
+            </button>
+          );
+        })}
       </div>
       <div style={S.nav}>
         <span />
@@ -2278,8 +2373,12 @@ export default function MoveMeToEU() {
       <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
         <h2 style={S.h2}>Your EU matches</h2>
         <p style={S.lede}>
-          {eligible.length} of 27 EU member states fit your profile and pathway
-          {selectedVisa ? ` (${VISAS.find(v => v.id === selectedVisa)?.label})` : ""}.
+          {eligible.length} of 27 EU member states fit your profile and {selectedVisas.length > 1 ? "pathways" : "pathway"}
+          {selectedVisas.length === 1
+            ? ` (${VISAS.find(v => v.id === selectedVisas[0])?.label})`
+            : selectedVisas.length > 1
+              ? ` (${selectedVisas.map(id => VISAS.find(v => v.id === id)?.label).filter(Boolean).join(", ")})`
+              : ""}.
           Ranked by how well each scores against your priorities. Add up to 3 to compare side by side.
         </p>
         <span id="max-shortlist-notice" className="sr-only">
