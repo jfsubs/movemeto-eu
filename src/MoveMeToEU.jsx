@@ -2448,6 +2448,34 @@ export default function MoveMeToEU() {
           </div>
         )}
 
+        {/* How scoring works — collapsed by default. Mirrors the Why EU page's
+            methodology disclosure pattern: opt-in transparency about the
+            bonus/penalty layer that produces the "+X strong fit" / "−X weak fit"
+            chips next to each country's score. */}
+        <details style={{ marginBottom:24, fontSize:13, color:"#4A5578" }}>
+          <summary style={{ cursor:"pointer", fontWeight:600 }}>How is this scored?</summary>
+          <div style={{ marginTop:12, lineHeight:1.6 }}>
+            <p style={{ marginBottom:8 }}>
+              <strong>Priority match.</strong> Each country gets a weighted average of how well it matches
+              your 13 priorities, with priorities you rated higher counting disproportionately more (weight
+              squared — so a 5 counts roughly 2.8× more than a 3). This is deliberate; flat averages bunch
+              countries into a narrow band that isn't useful for comparing.
+            </p>
+            <p style={{ marginBottom:8 }}>
+              <strong>Bonus and penalty layer.</strong> The raw average is then adjusted for standout matches
+              and mismatches on your top-weighted priorities. A country gets <strong>+0.5</strong> for every
+              priority you rated 4 where it scores ≥85, and <strong>+1.5</strong> for every priority you rated
+              5 where it scores ≥90. Mirror penalties apply: <strong>−1</strong> per weight-4 priority scoring
+              ≤40, <strong>−3</strong> per weight-5 priority scoring ≤30. The final score is clamped to 0–100.
+            </p>
+            <p style={{ margin:0 }}>
+              <strong>The "+X strong fit" / "−X weak fit" chips</strong> next to each country's score surface
+              this adjustment when it reaches <strong>±2 or more</strong>, so you can see why a country jumped
+              above or fell below its raw average. Smaller adjustments stay hidden to keep the page uncluttered.
+            </p>
+          </div>
+        </details>
+
         {/* Contact banner — sits at the top of Step 3 (after the gold priority
             summary, before the matches list) so users see the offer of help
             before diving into the data. EU-blue left border distinguishes it
