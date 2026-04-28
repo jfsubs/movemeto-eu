@@ -185,19 +185,22 @@ Layout is overlay-style: image + gradient + headline overlay on the hero, choice
 
 Image credits render in the page footer as a single concatenated line. The footer line only appears if any `HERO_IMAGES` entry has a non-empty `credit` string, so adding new entries with empty credits doesn't break the footer.
 
-### Why EU? promoted banner (April 2026)
+### Why EU? promoted banner (April 2026, expanded April 28 2026)
 
-Below the two intro-fork cards sits a promoted card-styled banner that surfaces three Why EU? statistics:
+Below the two intro-fork cards sits a promoted card-styled banner that surfaces four Why EU? statistics:
 
-1. **#23/28** (US quality-of-life rank, computed from `QOL.US.overallRank`) — neutral blue
-2. **2.3×** (US road deaths vs. EU average, computed from `US_ROAD_DEATHS` / mean of `ROAD_DEATHS`) — red, since US disadvantage
-3. **5.9×** (US homicide rate vs. EU average, computed from `US_HOMICIDE_AVG` / mean of `EU_CRIME[*].homicide`) — red
+1. **22/27** (EU nations ranking higher than the US on overall quality of life, computed from `QOL` overallRanks) — neutral blue
+2. **33%** (EU 27 average lower cost of living vs. US, computed from `COL_PLUS_RENT` mean vs. `US_COL_PLUS_RENT`) — green
+3. **2.3×** (Fewer EU road deaths vs. US, computed from `US_ROAD_DEATHS` / mean of `ROAD_DEATHS`) — green
+4. **5.9×** (Lower EU homicide rate vs. US, computed from `US_HOMICIDE_AVG` / mean of `EU_CRIME[*].homicide`) — green
 
-Stats are computed inline at render time from existing data structures so they stay in sync if the underlying data updates. `US_HOMICIDE_AVG = 6.4` is a multi-year average sitting between 2022 (~6.3) and 2023 (~5.7) FBI UCR figures.
+Stats are computed inline at render time from existing data structures so they stay in sync if the underlying data updates. `US_HOMICIDE_AVG = 6.4` is a multi-year average sitting between 2022 (~6.3) and 2023 (~5.7) FBI UCR figures. `US_COL_PLUS_RENT = 54.3` is the Numbeo 2025 annual snapshot for the US on the Cost of Living + Rent Index (NYC = 100).
 
-The headline ("How does the US actually compare? Here's the data.") and the CTA ("See the full comparison →") were written to be neutral-comparative, not persuasion-mode. The framing was deliberately rejected during design: anything that assumes the reader is "wondering why people leave" frames movement-out as the default narrative and crosses into marketing-speak the project tone explicitly avoids.
+The framing is **EU-positive**: each stat is phrased as an EU advantage rather than a US deficit ("Lower homicide rate vs. US" rather than "US homicide rate vs. EU"). All three comparison stats use green (`#1F5D1F`) to reinforce the positive framing; the QoL count uses neutral EU blue (`#003399`) since it's a count rather than a magnitude. This was a deliberate reframe (April 28 2026) — the prior version led with US-negative framing in red, which read more like fearmongering than a positive case for the EU.
 
-Three coequal stats was a deliberate choice over a single hero number — single-stat felt like cherry-picking; three stats spread across QoL / safety dimensions present the comparison as a pattern.
+The headline ("How does the US actually compare? Here's the data.") and the CTA ("See the full comparison →") remain neutral-comparative, not persuasion-mode. The framing was deliberately rejected during design: anything that assumes the reader is "wondering why people leave" frames movement-out as the default narrative and crosses into marketing-speak the project tone explicitly avoids.
+
+Four coequal stats was chosen over three (the original) when cost of living was added — single-stat felt like cherry-picking and three-stat skewed safety-heavy; four stats spread across QoL / cost / safety / safety dimensions present the comparison as a pattern. The grid uses `repeat(auto-fit, minmax(160px, 1fr))` so 4 stats hold a single row at common laptop widths and gracefully wrap to 2x2 or single-column on smaller viewports.
 
 The original Step 0 banner ("Moving from the US? See how your state compares...") was a small one-line strip. It was promoted to a full card after the intro fork was added because the small strip was getting buried by the two choice cards above it.
 
@@ -228,19 +231,24 @@ Added after user research (your CSV). It's a 13th priority (the other 12 being a
 
 ### Why EU page structure
 
-Three sections, in this order, each with the same pattern (3-card hero + chart/table + source note):
+Four sections, in this order, each with the same pattern (3-card hero + chart/table + source note):
 
 1. **Quality of life** — the broad-spectrum index average, leads the page as the high-level framing
-2. **Road fatalities** — the everyday danger Americans underestimate
-3. **Personal safety (homicide)** — the one crime metric with consistent US/EU definitions
+2. **Cost of living** — Numbeo CoL + Rent Index, EU 27 vs US (added April 28 2026)
+3. **Road fatalities** — the everyday danger Americans underestimate
+4. **Personal safety (homicide)** — the one crime metric with consistent US/EU definitions
 
-The order was flipped from safety-first to QoL-first in April 2026. Leading with homicide read as fearmongering before readers had seen the broader quality-of-life picture; the QoL section now sets context and the two safety sections drill down. The lede paragraph and the methodology `<details>` paragraphs follow the same QoL → Road → Homicide order as the sections.
+The order was flipped from safety-first to QoL-first in April 2026. Leading with homicide read as fearmongering before readers had seen the broader quality-of-life picture; the QoL section now sets context. Cost of living was inserted as the second section on April 28 2026 — high practical relevance for the target audience (US retirees and remote workers who maintain US salaries), and a natural bridge between the broad QoL framing and the more specific safety drilldowns. The lede paragraph and the methodology `<details>` paragraphs follow the same QoL → CoL → Road → Homicide order as the sections.
 
-Only the first section on the page (QoL) omits the top divider (`paddingTop:32 / borderTop:"2px solid #EADFC2"`); the other two carry it. The homicide block is wrapped in its own `<section aria-labelledby="homicide-h">` so it matches the structural pattern of the other two (it was originally bare siblings because it didn't need a top divider when it led the page).
+Only the first section on the page (QoL) omits the top divider (`paddingTop:32 / borderTop:"2px solid #EADFC2"`); the other three carry it. The homicide block is wrapped in its own `<section aria-labelledby="homicide-h">` so it matches the structural pattern of the other sections (it was originally bare siblings because it didn't need a top divider when it led the page).
 
-The Why EU page is reachable from three places: the top-nav "Why EU?" tab, the bottom CTA below the intro-fork cards (promoted three-stat banner — see "Why EU? promoted banner" decision above), and the bottom-of-page CTA inside the wizard's Step 0.
+The Why EU page is reachable from three places: the top-nav "Why EU?" tab, the bottom CTA below the intro-fork cards (promoted four-stat banner — see "Why EU? promoted banner" decision above), and the bottom-of-page CTA inside the wizard's Step 0.
 
 The original Why EU had a peer-relative tier table (Low/Moderate/High). That was removed because it misled cross-border comparisons — "Moderate" in one peer group isn't comparable to "Moderate" in another. Don't reintroduce tier tables.
+
+**Cost of living detail-section framing.** The CoL detail section follows the Road/Homicide visual pattern (US value in red `#8C1F1F`, EU avg in blue `#003399`, the gap card in gold) — *not* the EU-positive green framing of the hero banner. This is intentional: the hero banner is a top-level pitch where green reinforces "EU advantage" framing; the detail sections are data presentations where the established US-as-comparator color scheme keeps the four sections visually consistent. Don't refactor CoL detail colors to green.
+
+**Cost of living: purchasing-power caveat is deliberately omitted.** Numbeo also publishes a Local Purchasing Power Index showing the US at 146.2 vs. an EU 27 average around 96.2 — i.e., US salaries can buy ~52% more relative to costs. This caveat was *deliberately omitted* from the Why EU page (decision April 28 2026) because the target audience for this tool is US retirees on fixed Social Security/pensions and US-salaried remote workers, neither of whom would experience the wage compression that LPP captures. If the audience model changes (e.g., if the tool starts serving people transitioning to EU-domestic salaries), revisit and add the caveat to the methodology `<details>`.
 
 ### DNS: A record, not ALIAS
 
@@ -396,4 +404,4 @@ When uncertain about tone, err toward the tone of *The Economist* or a thoughtfu
 
 ---
 
-*Last updated: April 28, 2026. Update this file when architectural decisions change.*
+*Last updated: April 28, 2026 (cost of living added to Why EU and hero banner). Update this file when architectural decisions change.*

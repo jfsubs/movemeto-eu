@@ -174,6 +174,22 @@ const ROAD_DEATHS = {
 };
 const US_ROAD_DEATHS = 12.4;
 
+/* ---------- COST OF LIVING (Numbeo Cost of Living + Rent Index, 2025) ---- */
+/* NYC = 100 baseline. Combines groceries, dining, transport, utilities, and rent
+   into a single normalized index. The "Cost of Living + Rent" variant is used
+   (vs. the basic CoL which excludes rent) because rent is a major part of
+   household expenses and varies more between US and EU than other categories.
+   Source: Numbeo, https://www.numbeo.com/cost-of-living/rankings_by_country.jsp
+   Annual snapshot — refresh against Numbeo's latest annual index when it rolls
+   over (typically a new annual dataset each January). */
+const COL_PLUS_RENT = {
+  AT: 43.6, BE: 40.1, BG: 24.2, HR: 30.5, CY: 38.2, CZ: 31.5, DK: 48.6, EE: 33.8,
+  FI: 41.1, FR: 41.0, DE: 42.4, GR: 31.1, HU: 25.3, IE: 50.6, IT: 36.3, LV: 28.6,
+  LT: 30.9, LU: 54.8, MT: 37.1, NL: 47.9, PL: 28.8, PT: 32.8, RO: 23.2, SK: 29.7,
+  SI: 34.1, ES: 33.6, SE: 38.7,
+};
+const US_COL_PLUS_RENT = 54.3;
+
 /* Index keys for QoL breakdown display */
 const QOL_INDICES = [
   { key:"hdi",             label:"HDI",             desc:"UN Human Development Index" },
@@ -1631,6 +1647,9 @@ export default function MoveMeToEU() {
           .filter(([k, v]) => k !== "US" && v.overallRank != null);
         const euQolBetter = euQolEntries.filter(([, v]) => v.overallRank < usQolRank).length;
         const euQolTotal = euQolEntries.length;
+        const colValues = Object.values(COL_PLUS_RENT);
+        const colEuAvg = colValues.reduce((s, x) => s + x, 0) / colValues.length;
+        const colGap = Math.round(((US_COL_PLUS_RENT - colEuAvg) / US_COL_PLUS_RENT) * 100);
         const roadEuValues = Object.values(ROAD_DEATHS);
         const roadEuAvg = roadEuValues.reduce((s, x) => s + x, 0) / roadEuValues.length;
         const roadGap = (US_ROAD_DEATHS / roadEuAvg).toFixed(1);
@@ -1693,7 +1712,7 @@ export default function MoveMeToEU() {
               aria-label="Quick US-vs-EU statistics"
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
                 gap: 0,
                 borderTop: "1px solid #EADFC2",
                 paddingTop: 16,
@@ -1710,6 +1729,20 @@ export default function MoveMeToEU() {
                 </div>
                 <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
                   Overall quality of life, across six global indices
+                </div>
+              </div>
+              <div className="why-eu-stat" style={{ padding: "4px 16px", borderRight: "1px solid #EADFC2" }}>
+                <div style={{
+                  fontFamily: '"Fraunces", Georgia, serif',
+                  fontSize: 32, fontWeight: 500, color: "#1F5D1F", lineHeight: 1,
+                }}>
+                  {colGap}%
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
+                  Lower cost of living vs. US
+                </div>
+                <div style={{ fontSize: 12, color: "#4A5578", marginTop: 2, lineHeight: 1.4 }}>
+                  EU 27 average, including rent (Numbeo 2025)
                 </div>
               </div>
               <div className="why-eu-stat" style={{ padding: "4px 16px", borderRight: "1px solid #EADFC2" }}>
@@ -2755,6 +2788,19 @@ export default function MoveMeToEU() {
     const euSaferRoads = roadRows.filter(x => x.rate < US_ROAD_DEATHS).length;
     const maxRoad = Math.max(US_ROAD_DEATHS, ...roadRows.map(x => x.rate));
 
+    // Cost of living: US vs EU. Numbeo Cost of Living + Rent Index, NYC = 100.
+    // EU 27 each have a value; US is national. Lower = cheaper.
+    const colRows = COUNTRIES
+      .map(c => ({ country: c, rate: COL_PLUS_RENT[c.code] }))
+      .filter(x => x.rate != null)
+      .sort((a, b) => a.rate - b.rate);
+    const cheapestCol = colRows[0];
+    const priciestCol = colRows[colRows.length - 1];
+    const colEuAvg = colRows.reduce((s, x) => s + x.rate, 0) / colRows.length;
+    const colGapPct = Math.round(((US_COL_PLUS_RENT - colEuAvg) / US_COL_PLUS_RENT) * 100);
+    const euCheaperThanUs = colRows.filter(x => x.rate < US_COL_PLUS_RENT).length;
+    const maxCol = Math.max(US_COL_PLUS_RENT, ...colRows.map(x => x.rate));
+
     const Bar = ({ label, rate, highlight, code, max = maxRate, unitLabel = "homicides per 100,000 residents" }) => {
       const pct = (rate / max) * 100;
       return (
@@ -2789,8 +2835,8 @@ export default function MoveMeToEU() {
         <h2 style={S.h2}>Why move to the EU?</h2>
         <p style={S.lede}>
           Some of the clearest differences between life in the United States and life in the European Union
-          show up in broad quality of life, traffic deaths, and day-to-day safety. Choose your US state to see
-          how it compares to the 27 EU member states across all three dimensions.
+          show up in broad quality of life, cost of living, traffic deaths, and day-to-day safety. Choose your
+          US state to see how it compares to the 27 EU member states across all four dimensions.
         </p>
 
         {/* ================= QUALITY OF LIFE ================= */}
@@ -2896,6 +2942,82 @@ export default function MoveMeToEU() {
             index columns show the country's rank within that specific index's global dataset (so HDI rank 21
             means the US is 21st in the world on the UN Human Development Index). The overall rank in this
             table is among the 28 places shown here (US + EU 27), not worldwide.
+          </p>
+        </section>
+
+        {/* ================= COST OF LIVING ================= */}
+        <section aria-labelledby="cost-h" style={{ marginBottom:48, paddingTop:32, borderTop:"2px solid #EADFC2" }}>
+          <h3 id="cost-h" style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D", textAlign:"center" }}>
+            Cost of living: how the EU compares
+          </h3>
+          <p style={{ fontSize:14, color:"#4A5578", marginBottom:24, maxWidth:720, lineHeight:1.55, textAlign:"center", margin:"0 auto 24px" }}>
+            On the Numbeo Cost of Living + Rent Index — a normalized measure that combines groceries, dining,
+            transport, utilities, and rent — the US scores <strong>{US_COL_PLUS_RENT}</strong>{" "}
+            (NYC = 100). The EU 27 average sits at <strong>{colEuAvg.toFixed(1)}</strong>, roughly{" "}
+            <strong>{colGapPct}% lower</strong>. Of the 27 EU member states, <strong>{euCheaperThanUs}</strong>{" "}
+            cost less to live in than the US.
+          </p>
+
+          {/* CoL hero stats */}
+          <div style={{
+            display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16, marginBottom:32,
+          }}>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #8C1F1F" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>US cost of living</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#8C1F1F", lineHeight:1 }}>
+                {US_COL_PLUS_RENT}
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>Numbeo CoL + Rent Index, NYC = 100</div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #003399" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>EU 27 average</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#003399", lineHeight:1 }}>
+                {colEuAvg.toFixed(1)}
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                across the 27 EU member states
+              </div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #FFCC00", background:"#FFFBEB" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>The gap</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#7A5C00", lineHeight:1 }}>
+                {colGapPct}%
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                EU average lower than the US.{" "}
+                <Flag code={cheapestCol.country.code} size={14} /> {cheapestCol.country.name} is the cheapest
+                ({cheapestCol.rate.toFixed(1)}).
+              </div>
+            </div>
+          </div>
+
+          {/* CoL bar chart */}
+          <div style={{ background:"#fff", border:"1px solid #E8DFC9", borderRadius:4, padding:"20px 24px" }}>
+            <Bar
+              label="United States"
+              rate={US_COL_PLUS_RENT}
+              highlight={true}
+              code="US"
+              max={maxCol}
+              unitLabel="cost of living plus rent index, NYC = 100"
+            />
+            <div style={{ borderBottom:"1px dashed #CEC2A0", margin:"10px 0" }} />
+            {colRows.map(x => (
+              <Bar
+                key={x.country.code}
+                label={x.country.name}
+                rate={x.rate}
+                code={x.country.code}
+                max={maxCol}
+                unitLabel="cost of living plus rent index, NYC = 100"
+              />
+            ))}
+          </div>
+          <p style={{ fontSize:12, color:"#4A5578", marginTop:12, fontStyle:"italic" }}>
+            <strong>{euCheaperThanUs} of 27</strong> EU member states cost less to live in than the US;
+            only <Flag code={priciestCol.country.code} size={14} /> {priciestCol.country.name}{" "}
+            ({priciestCol.rate.toFixed(1)}) edges above the US.{" "}
+            Source: Numbeo Cost of Living + Rent Index, 2025 annual snapshot.
           </p>
         </section>
 
@@ -3242,6 +3364,15 @@ export default function MoveMeToEU() {
               Happy Planet Index. Each index weights different factors (income, education, environment,
               social cohesion, life expectancy, and so on), so an average across all six is a more robust
               signal than any single source. The average is over the 28 places compared here (US + EU 27).
+            </p>
+            <p style={{ marginBottom:8 }}>
+              <strong>Cost of living.</strong> The Numbeo Cost of Living + Rent Index sets New York City at 100
+              and combines the relative cost of groceries, dining, transport, utilities, and rent into a single
+              normalized number. Numbeo aggregates crowdsourced prices alongside official sources and publishes
+              a fresh annual index each January; the values shown here are from the 2025 annual snapshot. The
+              EU average shown is a simple country-level average across the 27 member states. As with any
+              single index, individual cities within a country can run meaningfully above or below the national
+              figure.
             </p>
             <p style={{ marginBottom:8 }}>
               <strong>Road fatalities.</strong> Deaths per 100,000 population per year, sourced from the WHO
