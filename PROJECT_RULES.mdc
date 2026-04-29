@@ -250,6 +250,18 @@ The original Why EU had a peer-relative tier table (Low/Moderate/High). That was
 
 **Cost of living: purchasing-power caveat is deliberately omitted.** Numbeo also publishes a Local Purchasing Power Index showing the US at 146.2 vs. an EU 27 average around 96.2 — i.e., US salaries can buy ~52% more relative to costs. This caveat was *deliberately omitted* from the Why EU page (decision April 28 2026) because the target audience for this tool is US retirees on fixed Social Security/pensions and US-salaried remote workers, neither of whom would experience the wage compression that LPP captures. If the audience model changes (e.g., if the tool starts serving people transitioning to EU-domestic salaries), revisit and add the caveat to the methodology `<details>`.
 
+### FAQ view: SEO-targeted long-tail Q&A (April 28 2026)
+
+Third top-level view alongside `wizard` and `whyEU` — the top nav has three tabs. Routing uses the existing `view` state (`view === "faq"` → `renderFAQ()`); like Why EU, it's a content view with no wizard state, no shortlist tray, and no matching-engine activation. The wizard stepper is suppressed when this view is active.
+
+Data lives in the `FAQ_ITEMS` array immediately above `renderFAQ` in `MoveMeToEU.jsx` — 12 questions with `q` and `a` fields. Answers run 80–180 words, project tone (dry, honest, reader-as-capable-adult, "verify at the portal" caveats where claims are time-sensitive). Rendered as `<details>` accordions inside a `role="list"` container; each item gets a 1px border and Fraunces summary headings to match the rest of the site's visual language. A yellow disclaimer card at the bottom flags the not-legal-advice / verify-at-portal point explicitly.
+
+**`FAQ_ITEMS` must stay in sync with the `FAQPage` JSON-LD block in `index.html`.** The JSON-LD has slightly compressed answer text (Schema.org recommends concise content) but the questions and substantive claims must match. If a fact changes in one, change both — semantic divergence between the in-app FAQ and the structured-data version misleads search engines and users differently and creates a hard-to-debug ranking inconsistency.
+
+**Why this view exists.** A single-URL SPA can't rank multiple pages, but it can earn FAQ visibility for long-tail queries via the FAQPage schema and on-page Q&A content. The 12 questions were chosen to match real search intent for the target audience: "Which EU country is easiest to move to from the US?", "What's the difference between a Blue Card and Digital Nomad visa?", "Can Americans retire in Europe?" — phrased to mirror actual search-bar phrasings, not paraphrased into generic taxonomic forms ("Overview of EU visa types"). Don't reframe questions into generic shapes; that loses the long-tail match.
+
+**Don't add legal-advice-shaped specificity.** Some answers cite specific thresholds (Germany Blue Card ~€48,300, Portugal D7 €2,000–€3,000/month). Those reset annually with local minimum-wage changes — the disclaimer card exists for this reason. Don't add new questions that require even more precision (specific tax rates, processing times to the day, exact application fees) — those age out of correctness fastest and are exactly what the data-freshness caveat exists to disclaim. The Q list is also not bloat-shaped — adding a 13th question is fine if it's a real long-tail target, but don't pad it with questions that just paraphrase existing ones.
+
 ### DNS: A record, not ALIAS
 
 Joker supports ALIAS records at the apex, but we use an A record (`216.24.57.1`) instead. Reasons:
@@ -319,6 +331,40 @@ Set in `index.html` as `<html lang="en">`. It's not settable from inside the Rea
 
 ---
 
+## SEO and metadata baseline (April 28 2026)
+
+The site is indexable by default. A full SEO baseline is in place; don't add `<meta name="robots" content="noindex">`.
+
+What's deployed:
+
+- **`index.html`** — title, meta description (under 160 chars), canonical (`https://movemeto.eu/`), full Open Graph + Twitter Card metadata, two JSON-LD blocks (`WebApplication` + `FAQPage`), preconnects to Google Fonts and the Twemoji CDN
+- **`public/robots.txt`** — allow-all, points to sitemap, defensive `Disallow: /*onrender.com*` rule
+- **`public/sitemap.xml`** — single URL (`/`) since the SPA has no per-route URLs
+- **`public/og-image.png`** — 1200×630, EU blue + gold, regeneratable from `public/og-image.svg` (in-repo source). The PNG was rendered with TeX Gyre Bonum + Liberation Sans as Fraunces/Manrope substitutes in a sandboxed environment; for pixel-perfect brand fidelity, re-render the SVG locally with the actual brand fonts installed (`magick og-image.svg og-image.png` works once Fraunces and Manrope are on the rendering machine)
+
+Cross-cutting things to keep in sync:
+
+- **WebApplication JSON-LD** describes the tool — `featureList`, `about`, audience, the 9 visa types listed by name. If the visa type list in `MoveMeToEU.jsx` changes, update the `about` array
+- **FAQPage JSON-LD** mirrors `FAQ_ITEMS` from `MoveMeToEU.jsx`. See "FAQ view" decision above for sync rules
+- **OG image dimensions** — 1200×630 is the de facto standard. Don't change without updating both meta tags (`og:image:width`, `og:image:height`) and verifying preview behavior across LinkedIn / iMessage / Slack / X
+- **Canonical URL** — points at the apex (`https://movemeto.eu/`). The Render preview subdomain is disabled (April 28 2026) so duplicate-content risk is contained; if it's ever re-enabled, that subdomain needs `noindex` and a canonical pointing back at apex (see "What NOT to do" below)
+
+What's deliberately *not* in place:
+
+- A separate content site at the apex. The `mywiserelocation.com` domain is being developed as a separate content/blog property that links *into* `movemeto.eu` — not a redirect, not a mirror. The two domains target different SEO surfaces (`movemeto.eu` for tool-shaped queries, `mywiserelocation.com` for educational long-form content). Don't propose merging them or redirecting one to the other
+- Per-page URLs for individual countries / visa types. Adding routes was rejected (see "What NOT to do" #6). The SEO consequence is real but accepted — the FAQ schema and tool-shaped queries are the chosen ranking surface
+
+When SEO content changes (FAQ, OG image, structured data), validate before deploying:
+
+- JSON-LD blocks parse cleanly. Quick check from the repo root:
+  ```bash
+  python3 -c "import json,re; html=open('index.html').read(); [json.loads(b) for b in re.findall(r'<script type=\"application/ld\+json\">(.*?)</script>', html, re.DOTALL)]; print('OK')"
+  ```
+- Open Graph preview: paste the URL into [opengraph.xyz](https://www.opengraph.xyz/) or directly into Slack / iMessage as a sanity check
+- Rich Results Test: [search.google.com/test/rich-results](https://search.google.com/test/rich-results) confirms Google sees both schemas
+
+---
+
 ## What NOT to do
 
 Decisions that have been tried and rejected, or suggestions that waste time:
@@ -341,6 +387,10 @@ Decisions that have been tried and rejected, or suggestions that waste time:
 16. **Don't ship `.webp` files that are actually JPGs.** Always run an actual conversion pass (Squoosh or `magick`). Renaming `.jpg` to `.webp` works in browsers but balloons file size by 20–50× and defeats the point of WebP.
 17. **Don't auto-rotate the hero without honoring `prefers-reduced-motion`.** The current implementation disables the interval entirely when the media query matches. Don't replace this with a "slow rotation" — reduced-motion users want no motion, not less motion.
 18. **Don't use Unicode emoji in the hero or as visual UI flourish.** The intro-fork card icons (`◇` / `◆`) are Unicode geometric symbols, same convention as visa icons. Emoji break on Windows browsers and add an inconsistent vendor-styling layer.
+19. **Don't add `<meta name="robots" content="noindex">` to `index.html`.** The site went indexable on April 28 2026 with a full SEO baseline (canonical, OG, JSON-LD, sitemap). If a specific future content needs hiding, use a `Disallow` rule in `robots.txt` on the relevant path; don't block the apex.
+20. **Don't let `FAQ_ITEMS` and the `FAQPage` JSON-LD diverge.** They mirror each other intentionally. Compressed answer text in JSON-LD is fine; a question or substantive fact appearing in one but not the other is not.
+21. **Don't re-enable the `movemeto-eu.onrender.com` preview subdomain** without first adding `<meta name="robots" content="noindex">` to its served HTML and a canonical pointing to the apex. Two domains serving identical content is the primary SEO risk for this project — the previous duplicate-content situation was the reason the preview was disabled in the first place.
+22. **Don't redirect or mirror `mywiserelocation.com` to `movemeto.eu`.** The two domains are intentionally a separate-properties pair: `movemeto.eu` is the tool, `mywiserelocation.com` is the content/blog site that links into it. They target different SEO surfaces. Merging them collapses both into a worse version of one.
 
 ---
 
@@ -349,10 +399,6 @@ Decisions that have been tried and rejected, or suggestions that waste time:
 Things mentioned in prior conversations but not yet built:
 
 - **Expand VISA_DETAILS to remaining 16 countries.** 11 of 27 currently have country-specific entries (DE, PT, ES, NL, IE, MT, FR, IT, GR, CZ, EE); 16 fall back to defaults (AT, BE, BG, HR, CY, DK, FI, HU, LV, LT, LU, PL, RO, SK, SI, SE). Coverage within the 11 is also uneven — no country has all 9 visa types. Strategic options were debated in April 2026 and the decided approach was: by visa type rather than by country, starting with Blue Card across all 27, then DNV. **Constraint:** Claude's training data on EU visa specifics (income thresholds, processing times) is unreliable and changes annually. Don't fabricate country-specific numbers. The honest workflow is: Justin researches one country at a time from official portals; Claude formats the result into the six-field schema (`income`, `documents`, `processing`, `duration`, `pathToPR`, `family`) and integrates it. When Justin can't pull current data, leave the entry as a default fallback rather than ship guesses.
-- **Soft-launch vs SEO-discoverable decision.** Add `<meta name="robots" content="noindex, nofollow">` if soft launch is desired; currently indexable by default.
-- **OG image.** 1200×630px link-preview image referenced in `index.html` but not yet created. Design should use EU flag backdrop + "Move Me To EU" wordmark + tagline.
-- **sitemap.xml and robots.txt in `public/`.** Templates exist in `DEPLOYMENT_GUIDE.md`.
-- **Disable the onrender.com subdomain.** After movemeto.eu is fully live, toggle Render Subdomain to Disabled in Render settings to avoid duplicate-content SEO issues.
 - **Mobile testing of expand panels.** The visa detail `<dl>` grid may need narrow-width adjustments. Not yet tested on phone.
 - **Mobile testing of the priority budget meter.** The header row uses `flexWrap:"wrap"` so it should reflow under 380px, but the "+N freed by lowering factors below 3" supplementary line hasn't been tested for narrow widths.
 - **City-level data.** Justin has mentioned this as an eventual goal — neighborhood-level scoring (Stadtfinder is a related tool he built separately for Aachen).
@@ -389,6 +435,7 @@ Justin's day job is in Arlington County government (CFCA president, active on tr
 
 - **Stadtfinder** — neighborhood choropleth mapper for Aachen
 - **My Wise Travel / mywisetravel.com** — multi-city travel planning app
+- **My Wise Relocation / mywiserelocation.com** — planned content/blog site for long-form relocation guides that links *into* movemeto.eu (separate SEO surface, not a redirect or mirror)
 - **EU Product Finder** — German/EU product sourcing tool
 - **Partei·Kompass** — political orientation tool
 
@@ -404,4 +451,4 @@ When uncertain about tone, err toward the tone of *The Economist* or a thoughtfu
 
 ---
 
-*Last updated: April 28, 2026 (cost of living added to Why EU and hero banner). Update this file when architectural decisions change.*
+*Last updated: April 28, 2026 (SEO baseline shipped: FAQ view + FAQ_ITEMS, OG image, WebApplication + FAQPage JSON-LD, robots.txt, sitemap.xml; mywiserelocation.com positioned as separate content site). Update this file when architectural decisions change.*
