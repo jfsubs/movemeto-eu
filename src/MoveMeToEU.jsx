@@ -1652,12 +1652,12 @@ export default function MoveMeToEU() {
         const colGap = Math.round(((US_COL_PLUS_RENT - colEuAvg) / US_COL_PLUS_RENT) * 100);
         const roadEuValues = Object.values(ROAD_DEATHS);
         const roadEuAvg = roadEuValues.reduce((s, x) => s + x, 0) / roadEuValues.length;
-        const roadGap = (US_ROAD_DEATHS / roadEuAvg).toFixed(1);
+        const roadGap = Math.round(((US_ROAD_DEATHS - roadEuAvg) / US_ROAD_DEATHS) * 100);
         const euHomicideValues = Object.values(EU_CRIME)
           .filter(c => c.homicide != null)
           .map(c => c.homicide);
         const euHomicideAvg = euHomicideValues.reduce((s, x) => s + x, 0) / euHomicideValues.length;
-        const homicideGap = (US_HOMICIDE_AVG / euHomicideAvg).toFixed(1);
+        const homicideGap = Math.round(((US_HOMICIDE_AVG - euHomicideAvg) / US_HOMICIDE_AVG) * 100);
 
         return (
           <section
@@ -1750,7 +1750,7 @@ export default function MoveMeToEU() {
                   fontFamily: '"Fraunces", Georgia, serif',
                   fontSize: 32, fontWeight: 500, color: "#1F5D1F", lineHeight: 1,
                 }}>
-                  {roadGap}×
+                  {roadGap}%
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
                   Fewer road deaths vs. US
@@ -1764,7 +1764,7 @@ export default function MoveMeToEU() {
                   fontFamily: '"Fraunces", Georgia, serif',
                   fontSize: 32, fontWeight: 500, color: "#1F5D1F", lineHeight: 1,
                 }}>
-                  {homicideGap}×
+                  {homicideGap}%
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1F4D", marginTop: 6 }}>
                   Lower homicide rate vs. US
