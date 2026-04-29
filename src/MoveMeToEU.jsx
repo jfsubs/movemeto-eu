@@ -1463,6 +1463,7 @@ export default function MoveMeToEU() {
             alt={i === heroIndex ? img.alt : ""}
             aria-hidden={i === heroIndex ? undefined : "true"}
             loading={i === 0 ? "eager" : "lazy"}
+            fetchPriority={i === 0 ? "high" : "low"}
             decoding="async"
             style={{
               position: "absolute",
@@ -3520,7 +3521,6 @@ export default function MoveMeToEU() {
   return (
     <div style={S.page}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
         .skip-link {
