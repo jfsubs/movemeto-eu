@@ -1035,6 +1035,8 @@ export default function MoveMeToEU() {
   const [quizAnswers, setQuizAnswers] = useState({}); // { trunk: ["career"], career_stage: "sponsored", ... }
 
   const mainRef = useRef(null);
+  const isPopping = useRef(false);   // true while a popstate restore is in flight
+  const hasMounted = useRef(false);  // false on first render so we replaceState instead of pushState
   const [animateIn, setAnimateIn] = useState(true);
   useEffect(() => {
     setAnimateIn(false);
@@ -1042,6 +1044,41 @@ export default function MoveMeToEU() {
     window.scrollTo(0, 0);
     mainRef.current?.focus({ preventScroll: true });
   }, [step, comparing, view, entryMode, quizStep]);
+
+  /* ---------- Browser history sync ----------
+     Pushes a history entry every time the user navigates to a new "screen"
+     (view, wizard step, quiz step, compare panel). The popstate listener
+     restores state when the user presses Back or Forward.
+     isPopping suppresses the reciprocal pushState that would otherwise fire
+     when the popstate handler calls the setter batch. */
+  useEffect(() => {
+    if (isPopping.current) {
+      isPopping.current = false;
+      return;
+    }
+    const navState = { view, entryMode, step, comparing, quizStep };
+    if (!hasMounted.current) {
+      window.history.replaceState(navState, "");
+      hasMounted.current = true;
+    } else {
+      window.history.pushState(navState, "");
+    }
+  }, [view, entryMode, step, comparing, quizStep]);
+
+  useEffect(() => {
+    const handlePop = (e) => {
+      const s = e.state;
+      if (!s) return;
+      isPopping.current = true;
+      setView(s.view ?? "wizard");
+      setEntryMode(s.entryMode ?? null);
+      setStep(s.step ?? 0);
+      setComparing(s.comparing ?? false);
+      setQuizStep(s.quizStep ?? 0);
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
 
   /* ---------- Hero slideshow ----------
      Rotates HERO_IMAGES every HERO_ROTATE_MS. Pauses when:
