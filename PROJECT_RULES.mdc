@@ -19,7 +19,7 @@ This file exists so any Claude session can jump into this project without re-der
 
 ## Stack & deployment (non-negotiable facts)
 
-- **Frontend:** React 18 + Vite, single `src/MoveMeToEU.jsx` file (~3,290 lines). Self-styled — no CSS framework, no component library. Styled with inline `style={}` objects and one small `<style>{css}</style>` block for pseudo-classes like `:focus-visible`, the skip link, and a couple of responsive breakpoints (hero band, Why EU stat-row dividers).
+- **Frontend:** React 18 + Vite, single `src/MoveMeToEU.jsx` file (~4,240 lines as of May 2026 after the services view was added). Self-styled — no CSS framework, no component library. Styled with inline `style={}` objects and one small `<style>{css}</style>` block for pseudo-classes like `:focus-visible`, the skip link, and a couple of responsive breakpoints (hero band, Why EU stat-row dividers).
 - **Fonts:** Google Fonts — `Fraunces` (serif, headings) + `Manrope` (sans, body).
 - **Colors:** EU blue `#003399`, EU gold `#FFCC00`, cream `#FAF6EE` page background, primary text `#0A1F4D`, secondary `#4A5578`. Never `#8A94AD` — that failed WCAG AA and is now removed.
 - **Hosting:** Render static site (auto-deploys on every push to `main`).
@@ -262,6 +262,74 @@ Data lives in the `FAQ_ITEMS` array immediately above `renderFAQ` in `MoveMeToEU
 
 **Don't add legal-advice-shaped specificity.** Some answers cite specific thresholds (Germany Blue Card ~€48,300, Portugal D7 €2,000–€3,000/month). Those reset annually with local minimum-wage changes — the disclaimer card exists for this reason. Don't add new questions that require even more precision (specific tax rates, processing times to the day, exact application fees) — those age out of correctness fastest and are exactly what the data-freshness caveat exists to disclaim. The Q list is also not bloat-shaped — adding a 13th question is fine if it's a real long-tail target, but don't pad it with questions that just paraphrase existing ones.
 
+### Services view: à la carte advisory pricing (May 2026)
+
+Fourth top-level view alongside `wizard`, `whyEU`, and `faq` — the top nav has four tabs, with the services tab labeled **"Work with me"** (not "Services" — relational framing was the deliberate choice over transactional). Routing follows the same pattern as the other content views: `view === "services"` → `renderServices()`, no wizard state, no shortlist tray, wizard stepper suppressed.
+
+The services view is the project's first revenue-generating surface. It exists to convert tool users into paying clients without the hard-sell funneling Justin explicitly built movemeto.eu to avoid. Three structural pieces:
+
+1. **About me card** — single bio, six paragraphs, no headshot. Establishes credibility through specifics: dual citizenship, decade-plus consulting tenure, Juris Doctor, civic roles, the Aachen briefing. See "Bio voice and content rules" below for what's deliberately included and excluded.
+2. **À la carte services grid** — four cards in a responsive `repeat(auto-fit, minmax(280px, 1fr))` grid. Country Match Review ($49 async), Discovery Call ($59 / 30 min), Document Review ($79 async), Pathway Consultation ($99 / 60 min). Each card has a `forWhom` line, a 4-bullet `includes` list with EU-blue diamond markers (◆), and a primary CTA.
+3. **Featured Roadmap card** — Relocation Roadmap at $299, gold border + "Best value" pill in its own section. The anchor product. Visually distinct from the four à la carte cards but uses the same `renderServiceCard()` helper with a `featured` flag.
+
+Below those: a 3-step "How this works" card (Email me → Confirm scope and pay → Get the deliverable), a yellow disclaimer card matching FAQ tone ("Not legal or tax advice"), and a CTA pair (ghost button to the pathway finder, primary button to email).
+
+**Funnel hook from the matches view.** `renderStep3` ends with a gold CTA card ("Want a written second look at these matches?") that displays "from $49" prominently and routes to `setView("services")`. This is the primary conversion path: someone who has seen their ranked matches has the highest natural intent to buy a written follow-up. The card uses the same `#FFF8E5` + gold treatment as the priority summary card and FAQ disclaimer for visual consistency. There's also a quieter EU-blue-bordered contact banner higher in the matches view (existed before the services build) — these two CTAs serve different intents and are deliberately not merged: the upper one is "reach out before reading," the lower is "next step after reading."
+
+**Booking infrastructure is mailto: at launch.** Every CTA is `mailto:info@movemeto.eu` with a pre-filled subject line. Stripe payment links, Calendly/zcal/Cal.com integration, and any kind of intake form are explicitly future work. The lo-fi flow is appropriate for the launch volume and avoids over-investing in infrastructure before the demand signal is confirmed.
+
+### Advisory services pricing philosophy (May 2026)
+
+These principles drove the launch pricing structure. They're decisions, not options, until conversion data justifies revisiting.
+
+**Transparent pricing.** Every price is published on the services page. Prospective clients can build a budget without contacting Justin. This positioning was researched against competitors and is partially owned in adjacent corners (Anders Consulting publishes a price list for German B2B; Sascha at immigration-consultant.de publishes per-product prices for German solo work; David McNeill's Expat Empire publishes session prices) but is not yet owned in the all-EU advisory-for-Americans corner movemeto.eu targets. Don't gate prices behind contact forms or "request a quote" CTAs.
+
+**À la carte over bundles.** Every service stands on its own. The Roadmap is a bundle but it's optional, not the default; the four standalone services are the primary path. Rationale: clients in the research phase don't know yet whether they'll need ongoing advisory and won't commit to a multi-session package on first contact. Letting them buy a single $49 review and decide what comes next is the trust-building mechanism.
+
+**Lower opening prices.** The launch menu opens at $49 (Country Match Review) and $59 (Discovery Call), undercutting David McNeill's €99 / ~$108 entry point and slightly above Sascha's €49 entry. This is deliberate undershoot. The plan is to watch the first 30–50 leads, and if entry-level conversion exceeds 30%, raise opening prices by 25–50%. Don't raise prices casually before that data exists.
+
+**No subscription or membership tier at launch.** Expatsi's monthly Journey membership works because they have a community flywheel (group scouting trips, member discord) Justin doesn't have and isn't building. A subscription tier with no community attached attracts low-converting subscribers who clutter the pipeline. Revisit only if there are 30+ past clients and an obvious community demand surface emerges.
+
+**Don't compete with Tier 2 destination services on settling-in.** Apartment hunting, Anmeldung accompaniment, school registration, lease checks — these require boots on the ground in Germany. Until Justin's own move (3–5 years out as of May 2026, per "About me" framing), refer these out. The referral path itself is a feature: "I'm not the destination agency — here's the one I trust." Don't propose building any service requiring physical presence in the destination country.
+
+**Tier framing for competitor analysis.** Three tiers exist in the broader relocation market, and conflating them produces unusable competitive intelligence:
+- *Tier 1* — physical movers (Schumacher, Allied, etc.) selling shipping containers. Not competition.
+- *Tier 2* — corporate destination services (Anders, PROGEDO, Expat US, Reelome) selling settling-in bundles to HR departments. Not competition until/unless Justin launches in-country services.
+- *Tier 3* — solo advisors (Sascha, David McNeill, Casie, Drucker, Expatsi). The actual competitive set.
+
+Pricing comparisons should reference Tier 3 only. Tier 1/2 numbers will mislead.
+
+### Bio voice and content rules (May 2026)
+
+The "About me" section in the services view was built deliberately. These choices are the result of explicit edits and should not be reversed without Justin asking.
+
+**Included by intent:**
+- Dual US/German citizenship and the unrestricted right to live and work on both sides of the Atlantic (the strongest credentialing fact)
+- Decade-plus tenure at "a professional services firm in Arlington, Virginia" with "a number of project teams on a variety of clients" (deliberately generic, not naming the employer)
+- Juris Doctor from Villanova University (full credential name, not "JD")
+- Vice Chair of the Arlington County Transportation Commission and President of the Columbia Forest Civic Association (specific civic credentials, both explicitly named)
+- The Aachen Sister City policy briefing (specific, verifiable, exactly the destination-country credential the audience needs to see)
+- Reference to the existing tools in the portfolio (movemeto.eu)
+- Explicit "What I am not" disclaimer paragraph at the end (immigration lawyer, tax advisor, relocation agency)
+
+**Deliberately excluded — do not re-add without explicit instruction:**
+- Employer name (FMP / FMP LLC / Federal Management Partners) — the bio uses "professional services firm in Arlington, Virginia" instead
+- Federal client names (NGA / National Geospatial-Intelligence Agency, NSF, Virginia DGIF, USAC, etc.) — earlier draft listed these; Justin removed them
+- Specific consulting domains from the LinkedIn headline (AI governance, AI-assisted development, strategic human capital, rapid prototyping) — collapsed to the generic "lead a number of project teams on a variety of clients"
+- The Newark Immigration Court asylum case from law school — removed in the May 2026 edit pass. Don't re-add.
+- The "Model Transportation Trust Fund" high-speed rail law review article — removed in the same edit pass. Don't re-add.
+- The Target Corporation HR Executive Team Leader role and earlier roles (radio at Ithaca, ski instructor, etc.)
+- Scrum Alliance certifications (CSM / A-CSM / CSP-SM) and the Responsible AI Foundations cert
+- PMP certification (Justin is studying for it; not yet certified — don't claim it)
+- German language proficiency level (no public level set; don't fabricate one)
+- Specific timeline ("3–5 years") — Justin replaced this with "a few years" in the May 2026 edit. Use that softer framing.
+
+**Voice rules for any future bio edits:**
+- Don't lead with the day job. The dual-citizenship + EU-relocation context is the lede.
+- Translate LinkedIn voice into project voice. LinkedIn says "spearheaded cross-functional initiatives"; project voice says concrete-noun-and-verb sentences with no resume language.
+- The "What I am not" closing paragraph is structurally important — it disclaims legal/tax/relocation-agency status before any client can wonder. Keep it.
+- The "That's not a bad description of what an EU-relocation advisor does either" rhetorical pivot in P2 is doing real work; it's the bridge between the day job and the advisory positioning. Don't remove it casually.
+
 ### DNS: A record, not ALIAS
 
 Joker supports ALIAS records at the apex, but we use an A record (`216.24.57.1`) instead. Reasons:
@@ -391,6 +459,13 @@ Decisions that have been tried and rejected, or suggestions that waste time:
 20. **Don't let `FAQ_ITEMS` and the `FAQPage` JSON-LD diverge.** They mirror each other intentionally. Compressed answer text in JSON-LD is fine; a question or substantive fact appearing in one but not the other is not.
 21. **Don't re-enable the `movemeto-eu.onrender.com` preview subdomain** without first adding `<meta name="robots" content="noindex">` to its served HTML and a canonical pointing to the apex. Two domains serving identical content is the primary SEO risk for this project — the previous duplicate-content situation was the reason the preview was disabled in the first place.
 22. **Don't redirect or mirror `mywiserelocation.com` to `movemeto.eu`.** The two domains are intentionally a separate-properties pair: `movemeto.eu` is the tool, `mywiserelocation.com` is the content/blog site that links into it. They target different SEO surfaces. Merging them collapses both into a worse version of one.
+23. **Don't use em-dashes in user-facing prose Claude authors for this project.** This is a standing voice preference. Replace with commas, semicolons, colons, or split into separate sentences. The rule applies to bio paragraphs, service descriptions, FAQ answers, in-app copy, marketing copy, and any other prose that ships to users. It does not apply to internal documentation (this file, code comments, commit messages), to em-dashes that already exist in Justin's data tables or country-specific visa entries (leave those alone unless Justin asks for a sweep), or to chat responses Claude writes back to Justin (those follow normal conventions). The rule is about what users read, not what Justin and Claude exchange while building.
+24. **Don't gate prices behind contact forms on the services page.** Transparency was researched and is the deliberate competitive position. "Contact for pricing," "request a quote," and similar patterns are exactly what the page is positioned against. See "Advisory services pricing philosophy."
+25. **Don't propose a subscription or membership tier on the services page.** Rejected at launch. Don't re-propose without 30+ past clients and an obvious community-surface demand signal. See "Advisory services pricing philosophy."
+26. **Don't propose competing with Tier 2 destination services on in-country settling-in work** (apartment hunting, Anmeldung accompaniment, school registration, lease checks). These require physical presence in Germany; Justin's own move is years out. Refer these out, don't build them. See "Advisory services pricing philosophy."
+27. **Don't re-add the asylum case or the high-speed rail article to the bio.** Both were drafted into earlier versions of the About me section and removed in Justin's May 2026 edit pass. Don't re-propose without explicit instruction. See "Bio voice and content rules" for the full list of excluded elements.
+28. **Don't name FMP / Federal Management Partners or specific federal clients (NGA, NSF, etc.) in the bio.** Justin's day job is described as "a professional services firm in Arlington, Virginia" by deliberate choice. Don't refactor this back to specifics. See "Bio voice and content rules."
+29. **Don't claim PMP certification or a specific German language proficiency level for Justin.** PMP is in progress, not earned. German level is not publicly stated. Don't fabricate either.
 
 ---
 
@@ -404,6 +479,10 @@ Things mentioned in prior conversations but not yet built:
 - **City-level data.** Justin has mentioned this as an eventual goal — neighborhood-level scoring (Stadtfinder is a related tool he built separately for Aachen).
 - **VISA_DETAILS as JSON.** Moving country-specific data out of the component into a separate JSON file would make quarterly refreshes less error-prone. Not urgent.
 - **Annual data-freshness review.** Schedule for each January when most EU states update minimum-wage-indexed thresholds.
+- **Booking infrastructure for the services view.** All CTAs are mailto: at launch. Future: Stripe payment links per service, a calendar tool (Cal.com / zcal / Calendly) for the live-call services, and a simple intake form to collect quiz results + situation summary upfront. Sequence matters: payment first, calendar second, intake third — the intake form has the lowest leverage and shouldn't be built until the payment + scheduling experience is the bottleneck.
+- **Conversion tracking on the services view.** No analytics are wired to the new view at launch. Once 30–50 leads have come through, decide whether to keep the $49/$59 entry pricing or raise. The decision data is conversion rate from quiz finish → "See all services and pricing" click → email send. A lightweight pageview + outbound-click counter (Plausible, Umami, or self-rolled) is the minimum needed; full GA4 is overkill.
+- **Services case study or testimonial section.** Once there are 3+ completed engagements with consenting clients, add a short testimonial / case study strip to the services view. Don't add fabricated or placeholder testimonials in the meantime.
+- **Headshot for the About me card.** Currently text-only. A headshot would help on the trust dimension but is genuinely optional; Sascha's site has one, David McNeill's site has one, but the strongest version of the page is text-led with a small photo, not photo-led. If added, lazy-load it and use a small `border-radius: 50%` 96px circle in the upper-right of the About card.
 
 ---
 
@@ -431,7 +510,7 @@ console.log('brackets:', count('['), '/', count(']'));
 
 ## Context for the owner
 
-Justin's day job is in Arlington County government (CFCA president, active on transportation policy). He's building this tool as both a personal relocation planning aid and a potential commercial product (relocation advisory service targeting Americans moving to the EU). The tool is in the same portfolio as:
+Justin's day job is at a professional services firm in Arlington, Virginia, where he leads project teams across a variety of clients. His Arlington County roles (Vice Chair of the Transportation Commission, President of the Columbia Forest Civic Association) are civic / volunteer, not employment — don't conflate them. He's a US/German dual citizen planning a family relocation to Germany over the next several years. He's building this tool as both a personal relocation planning aid and an active commercial product (relocation advisory service targeting Americans moving to the EU — see "Services view" architectural decision). The tool is in the same portfolio as:
 
 - **Stadtfinder** — neighborhood choropleth mapper for Aachen
 - **My Wise Travel / mywisetravel.com** — multi-city travel planning app
@@ -451,4 +530,4 @@ When uncertain about tone, err toward the tone of *The Economist* or a thoughtfu
 
 ---
 
-*Last updated: April 28, 2026 (SEO baseline shipped: FAQ view + FAQ_ITEMS, OG image, WebApplication + FAQPage JSON-LD, robots.txt, sitemap.xml; mywiserelocation.com positioned as separate content site). Update this file when architectural decisions change.*
+*Last updated: May 1, 2026 (Services view shipped: à la carte advisory pricing, About me bio, Pathway Finder → services CTA hook, em-dash voice rule established; Context for the owner section corrected to reflect actual day job).*
