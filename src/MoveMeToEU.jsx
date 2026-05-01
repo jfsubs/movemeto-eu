@@ -1039,6 +1039,7 @@ export default function MoveMeToEU() {
   const mainRef = useRef(null);
   const isPopping = useRef(false);   // true while a popstate restore is in flight
   const hasMounted = useRef(false);  // false on first render so we replaceState instead of pushState
+  const compareScrollRef = useRef(null); // scroll container for the compare table (mobile sync)
   const [animateIn, setAnimateIn] = useState(true);
   useEffect(() => {
     setAnimateIn(false);
@@ -2686,12 +2687,33 @@ export default function MoveMeToEU() {
     const cols = shortlistedResults.length;
     const isMobile = windowWidth < 640;
 
-    // On mobile, show one country at a time (tab-navigated). On desktop, show all side-by-side.
-    const safeIdx = Math.min(mobileCompareIdx, shortlistedResults.length - 1);
-    const displayCols = isMobile ? [shortlistedResults[safeIdx]] : shortlistedResults;
+    // On mobile: fixed column widths so exactly one country fills the visible area at a time.
+    // Label column is 130px; country column fills the rest of the content area (window minus 40px padding).
+    const colWidth = Math.max(180, windowWidth - 170); // windowWidth - 40px padding - 130px label
     const gridCols = isMobile
-      ? "minmax(120px, 140px) 1fr"
+      ? `130px repeat(${cols}, ${colWidth}px)`
       : `minmax(160px, 180px) repeat(${cols}, minmax(220px, 1fr))`;
+
+    // Sticky label style for mobile — keeps row labels visible while scrolling.
+    const stickyLabel = isMobile
+      ? { position:"sticky", left:0, zIndex:2 }
+      : {};
+
+    // Scroll the table to bring a specific country column into view.
+    const scrollToCountry = (i) => {
+      setMobileCompareIdx(i);
+      compareScrollRef.current?.scrollTo({ left: i * colWidth, behavior:"smooth" });
+    };
+
+    // Keep the active tab in sync as the user scrolls freely.
+    const handleScroll = () => {
+      if (!compareScrollRef.current) return;
+      const idx = Math.round(compareScrollRef.current.scrollLeft / colWidth);
+      const clamped = Math.max(0, Math.min(idx, cols - 1));
+      if (clamped !== mobileCompareIdx) setMobileCompareIdx(clamped);
+    };
+
+    const safeIdx = Math.min(mobileCompareIdx, cols - 1);
 
     return (
       <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
@@ -2700,8 +2722,8 @@ export default function MoveMeToEU() {
           Comparing {cols} {cols === 1 ? "country" : "countries"} across pathways, priorities and naturalisation timelines.
         </p>
 
-        {/* Mobile country tab navigator */}
-        {isMobile && shortlistedResults.length > 1 && (
+        {/* Mobile country tab navigator — click to jump, or just scroll freely */}
+        {isMobile && cols > 1 && (
           <div role="tablist" aria-label="Select country to compare"
             style={{ display:"flex", gap:0, marginBottom:16, border:"1px solid #E8DFC9", borderRadius:6, overflow:"hidden", background:"#fff" }}>
             {shortlistedResults.map((r, i) => (
@@ -2710,13 +2732,13 @@ export default function MoveMeToEU() {
                 type="button"
                 role="tab"
                 aria-selected={i === safeIdx}
-                onClick={() => setMobileCompareIdx(i)}
+                onClick={() => scrollToCountry(i)}
                 style={{
                   flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:5,
                   padding:"10px 6px", border:"none", cursor:"pointer",
                   background: i === safeIdx ? "#E4ECFF" : "#fff",
                   borderBottom: i === safeIdx ? "3px solid #003399" : "3px solid transparent",
-                  borderRight: i < shortlistedResults.length - 1 ? "1px solid #E8DFC9" : "none",
+                  borderRight: i < cols - 1 ? "1px solid #E8DFC9" : "none",
                   transition:"background .15s",
                 }}>
                 <Flag code={r.country.code} size={24} />
@@ -2728,13 +2750,17 @@ export default function MoveMeToEU() {
           </div>
         )}
 
-        <div style={{ overflowX: isMobile ? "visible" : "auto", marginBottom:24, border:"1px solid #E8DFC9", borderRadius:4, background:"#fff" }}
-          role="region" aria-label={isMobile ? "Country comparison" : "Country comparison table, scroll horizontally if needed"}
-          tabIndex={isMobile ? undefined : 0}>
+        <div
+          ref={compareScrollRef}
+          onScroll={isMobile ? handleScroll : undefined}
+          style={{ overflowX:"auto", marginBottom:24, border:"1px solid #E8DFC9", borderRadius:4, background:"#fff" }}
+          role="region"
+          aria-label="Country comparison table, scroll horizontally to see all countries"
+          tabIndex={0}>
           {/* Header row */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"2px solid #003399", background:"#F3EBDA" }}>
-            <div style={S.compareLabelCell}>Country</div>
-            {displayCols.map(r => (
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>Country</div>
+            {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                   <Flag code={r.country.code} size={32} />
@@ -2749,8 +2775,8 @@ export default function MoveMeToEU() {
 
           {/* Priority match */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"1px solid #EADFC2" }}>
-            <div style={S.compareLabelCell}>Priority match</div>
-            {displayCols.map(r => (
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>Priority match</div>
+            {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>
                 <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, color:"#003399" }}>
                   {r.score}<span style={{ fontSize:16, color:"#4A5578", fontWeight:400 }}>/100</span>
@@ -2764,24 +2790,24 @@ export default function MoveMeToEU() {
 
           {/* Language */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"1px solid #EADFC2" }}>
-            <div style={S.compareLabelCell}>Language</div>
-            {displayCols.map(r => (
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>Language</div>
+            {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>{r.country.lang}</div>
             ))}
           </div>
 
           {/* Population */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"1px solid #EADFC2" }}>
-            <div style={S.compareLabelCell}>Population</div>
-            {displayCols.map(r => (
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>Population</div>
+            {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>{r.country.pop}M</div>
             ))}
           </div>
 
           {/* EU integration */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"1px solid #EADFC2" }}>
-            <div style={S.compareLabelCell}>EU integration</div>
-            {displayCols.map(r => (
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>EU integration</div>
+            {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                   <span style={{ ...S.chip, ...(r.country.eurozone ? S.chipBlue : S.chipRed) }}>
@@ -2797,8 +2823,8 @@ export default function MoveMeToEU() {
 
           {/* Naturalisation */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"1px solid #EADFC2" }}>
-            <div style={S.compareLabelCell}>Naturalisation</div>
-            {displayCols.map(r => (
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>Naturalisation</div>
+            {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>
                 <strong>~{r.country.natYears} years</strong> of residency
               </div>
@@ -2807,8 +2833,8 @@ export default function MoveMeToEU() {
 
           {/* Pathways */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"1px solid #EADFC2" }}>
-            <div style={S.compareLabelCell}>Available pathways</div>
-            {displayCols.map(r => (
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>Available pathways</div>
+            {shortlistedResults.map(r => (
               <div key={r.country.code} style={S.compareCell}>
                 <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                   {r.availableVisas.length === 0 ? (
@@ -2827,11 +2853,11 @@ export default function MoveMeToEU() {
           {/* Per-priority scores */}
           {PRIORITIES.map(p => (
             <div key={p.id} style={{ display:"grid", gridTemplateColumns: gridCols, borderBottom:"1px solid #EADFC2" }}>
-              <div style={S.compareLabelCell}>
+              <div style={{ ...S.compareLabelCell, ...stickyLabel }}>
                 {p.label}
                 {weights[p.id] >= 4 && <span style={{ ...S.chip, ...S.chipGold, marginLeft:6, fontSize:9 }}>priority</span>}
               </div>
-              {displayCols.map(r => {
+              {shortlistedResults.map(r => {
                 const val = Math.round(priorityValue(r.country, p.id));
                 return (
                   <div key={r.country.code} style={S.compareCell}>
@@ -2847,8 +2873,8 @@ export default function MoveMeToEU() {
 
           {/* Official portal */}
           <div style={{ display:"grid", gridTemplateColumns: gridCols }}>
-            <div style={S.compareLabelCell}>Official portal</div>
-            {displayCols.map(r => {
+            <div style={{ ...S.compareLabelCell, ...stickyLabel }}>Official portal</div>
+            {shortlistedResults.map(r => {
               const portal = PORTALS[r.country.code];
               return (
                 <div key={r.country.code} style={S.compareCell}>
