@@ -1823,7 +1823,7 @@ export default function MoveMeToEU() {
             Need a real person to think this through with you?
           </h3>
           <p style={{ margin: 0, fontSize: 14, color: "#4A5578", lineHeight: 1.5 }}>
-            Pay-as-you-go advisory for Americans planning an EU move.
+            Pay-as-you-go advisory for individuals, couples, and families planning an EU move.
             Transparent pricing, no retainer required.
           </p>
         </div>
@@ -3878,8 +3878,8 @@ export default function MoveMeToEU() {
         </h3>
         <div style={{ fontSize: 15, lineHeight: 1.65, color: "#0A1F4D" }}>
           <p style={{ margin: "0 0 14px" }}>
-            I'm Justin Fuhrmann, a US/German dual citizen based in Arlington,
-            Virginia, with the unrestricted right to live and work on both
+            I'm Justin, a US/German dual citizen based in Virginia,
+            with the unrestricted right to live and work on both
             sides of the Atlantic. My family is planning our own move to
             Germany over the next several years. We're not packing tomorrow;
             we're a few years out, working through the same questions you
@@ -3888,8 +3888,8 @@ export default function MoveMeToEU() {
             have.
           </p>
           <p style={{ margin: "0 0 14px" }}>
-            My day job is with a professional services firm in Arlington,
-            Virginia, where I've worked for over a decade and currently lead
+            My day job is with a professional services firm in Virginia,
+            where I've worked for over a decade and currently lead
             a number of project teams on a variety of clients. My work with
             my teams and clients shares a common thread: analyze dense
             regulations and translate it into information that people can
@@ -3903,12 +3903,13 @@ export default function MoveMeToEU() {
             abilities.
           </p>
           <p style={{ margin: "0 0 14px" }}>
-            On the civic side, I'm Vice Chair of the Arlington County
-            Transportation Commission and President of the Columbia Forest
-            Civic Association. Last year I helped draft a policy briefing on
-            Aachen's transportation and walkability achievements for a
-            county board member's Sister City visit, a useful exercise in
-            comparing two systems from a US vantage point. The walkable,
+            On the civic side, I'm Vice Chair of my county's
+            Transportation Commission and President of my neighborhood
+            civic association. Recently, I drafted policy briefings for
+            government officials comparing transportation systems between
+            Aachen, Germany and where I live in Virginia, giving me
+            increased exposure and understanding to the differences when
+            comparing how the US to EU localities. The walkable,
             transit-oriented urban policy I work on locally is the same
             policy area that draws many Americans toward European cities; I
             think about these tradeoffs from both sides.
