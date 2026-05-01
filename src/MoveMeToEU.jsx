@@ -1777,24 +1777,65 @@ export default function MoveMeToEU() {
         );
       })()}
 
-      {/* Contact line — sits below the Why EU? banner so it's the last thing
-          on the intro page before the footer. Quieter visual treatment than
-          the banner above so it doesn't compete; more visible than the
-          footer alone because Justin specifically wanted a hero-page touch. */}
-      <div style={{
-        marginTop: 24,
-        maxWidth: 880,
-        marginLeft: "auto",
-        marginRight: "auto",
-        textAlign: "center",
-        fontSize: 14,
-        color: "#4A5578",
-        padding: "16px 20px 4px",
-        lineHeight: 1.5,
-      }}>
-        Want personalized help to answer your questions? Email{" "}
-        <a href="mailto:info@movemeto.eu" style={{ color:"#003399", fontWeight:600 }}>info@movemeto.eu</a>.
-      </div>
+      {/* Work with me strip — sits below the Why EU? banner as the final
+          element on the hero page. Mirrors the Why EU? banner's gold-border
+          treatment so it reads as a peer section, not an afterthought.
+          CTA navigates to the services view rather than dropping to mailto
+          so users see the full scope of offerings before deciding to reach out. */}
+      <section
+        aria-labelledby="hero-services-h"
+        style={{
+          marginTop: 20,
+          marginBottom: 8,
+          maxWidth: 880,
+          marginLeft: "auto",
+          marginRight: "auto",
+          background: "#fff",
+          border: "1px solid #E8DFC9",
+          borderLeft: "4px solid #FFCC00",
+          borderRadius: 4,
+          padding: "24px 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 24,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+          <div style={{
+            fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase",
+            color: "#7A5C00", fontWeight: 700, marginBottom: 6,
+          }}>
+            Work with me
+          </div>
+          <h3
+            id="hero-services-h"
+            style={{
+              fontFamily: '"Fraunces", Georgia, serif',
+              fontSize: 20,
+              fontWeight: 600,
+              color: "#0A1F4D",
+              margin: "0 0 6px",
+              lineHeight: 1.3,
+            }}
+          >
+            Need a real person to think this through with you?
+          </h3>
+          <p style={{ margin: 0, fontSize: 14, color: "#4A5578", lineHeight: 1.5 }}>
+            Pay-as-you-go advisory for Americans planning an EU move.
+            Transparent pricing, no retainer required.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setView("services")}
+          className="cta-outline"
+          style={{ ...S.compareBtn, whiteSpace: "nowrap", alignSelf: "center" }}
+        >
+          See services and pricing →
+        </button>
+      </section>
     </div>
   );
 
