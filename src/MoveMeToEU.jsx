@@ -3660,7 +3660,7 @@ export default function MoveMeToEU() {
     name: "Relocation Roadmap",
     price: "$299",
     format: "4 × 45-min sessions over 3 months",
-    turnaround: "Written plan + email support between calls",
+    turnaround: "Written plan + scoped question support between calls",
     forWhom: "If you're actively moving, not just researching, and want a working partner across the whole arc.",
     includes: [
       "Four scheduled video sessions across 3 months",
