@@ -2516,6 +2516,76 @@ export default function MoveMeToEU() {
           </details>
         )}
 
+        {/* Work with me CTA: end-of-funnel hook for the matches view.
+            Surfaces the Country Match Review ($49 written follow-up) as the
+            natural next step for someone who has just seen their ranked
+            matches, with transparent "from $49" pricing and a path to the
+            full services page. Gold card treatment matches the priority
+            summary card and FAQ disclaimer for visual consistency. */}
+        <section
+          aria-labelledby="step3-services-cta"
+          style={{
+            background: "#FFF8E5",
+            border: "1px solid #FFCC00",
+            borderRadius: 6,
+            padding: "24px 28px",
+            marginTop: 40,
+            marginBottom: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
+            <h3
+              id="step3-services-cta"
+              style={{
+                fontFamily: '"Fraunces", Georgia, serif',
+                fontSize: 22,
+                fontWeight: 600,
+                color: "#0A1F4D",
+                margin: 0,
+                lineHeight: 1.3,
+              }}
+            >
+              Want a written second look at these matches?
+            </h3>
+            <div
+              style={{
+                fontFamily: '"Fraunces", Georgia, serif',
+                fontSize: 22,
+                fontWeight: 600,
+                color: "#003399",
+                lineHeight: 1,
+              }}
+            >
+              from $49
+            </div>
+          </div>
+          <p style={{ fontSize: 15, color: "#0A1F4D", lineHeight: 1.6, margin: 0 }}>
+            The Country Match Review takes your results, reads them with a human
+            eye, and returns a one-page memo: top three picks ranked, the
+            biggest risk for each, and one concrete next step. Async, returned
+            in 48 hours. Live consultations and document reviews are also
+            available, all priced à la carte.
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+            <button
+              type="button"
+              style={S.btn}
+              onClick={() => setView("services")}
+            >
+              See all services and pricing →
+            </button>
+            <a
+              href="mailto:info@movemeto.eu?subject=Country%20Match%20Review"
+              style={{ ...S.btnGhost, textDecoration: "none", display: "inline-block", textAlign: "center", lineHeight: 1.2 }}
+            >
+              Email me directly
+            </a>
+          </div>
+        </section>
+
         <div style={S.nav}>
           <button type="button" style={S.btnGhost} onClick={startOver}>← Start over</button>
           <button type="button" style={S.btn} onClick={goBack}>Refine priorities</button>
@@ -3517,6 +3587,453 @@ export default function MoveMeToEU() {
     </div>
   );
 
+  /* ---------- Services view: à la carte advisory ---------- */
+  const SERVICES = [
+    {
+      id: "match-review",
+      name: "Country Match Review",
+      price: "$49",
+      format: "Async written review",
+      turnaround: "48-hour turnaround",
+      forWhom: "If you've taken the quiz and want a written second look at your top matches before going further.",
+      includes: [
+        "Review of your quiz results and weighted priorities",
+        "One-page memo: top 3 country picks ranked, with rationale",
+        "Biggest risk or constraint flagged for each match",
+        "One concrete recommended next step",
+      ],
+      cta: "Request a review",
+      ctaHref: "mailto:info@movemeto.eu?subject=Country%20Match%20Review",
+    },
+    {
+      id: "discovery",
+      name: "Discovery Call",
+      price: "$59",
+      format: "30-minute video call",
+      turnaround: "Email summary within 24 hours",
+      forWhom: "If you're early in research and not yet sure which pathway is realistic for your situation.",
+      includes: [
+        "Pathway-eligibility scan against your profile",
+        "Ranked discussion of which 2–3 visa types fit your case",
+        "An honest read on whether it's worth proceeding, and where to focus if so",
+        "Follow-up email with portal links and recommended reading",
+      ],
+      cta: "Book a discovery call",
+      ctaHref: "mailto:info@movemeto.eu?subject=Discovery%20Call",
+    },
+    {
+      id: "doc-review",
+      name: "Document Review",
+      price: "$79",
+      format: "Async written review",
+      turnaround: "48-hour turnaround",
+      forWhom: "If you have a CV, income letter, or supporting document you want a second pair of eyes on before submitting.",
+      includes: [
+        "Single-document review against EU/national format expectations",
+        "Inline comments and a written summary of issues",
+        "Specific suggested edits, not generic feedback",
+        "Add-on to any consultation, or standalone",
+      ],
+      cta: "Request a document review",
+      ctaHref: "mailto:info@movemeto.eu?subject=Document%20Review",
+    },
+    {
+      id: "pathway",
+      name: "Pathway Consultation",
+      price: "$99",
+      format: "60-minute video call",
+      turnaround: "Pre-call doc review + post-call summary",
+      forWhom: "If you've settled on a country and visa type and want to talk through the actual application.",
+      includes: [
+        "Pre-call review of one supporting document (CV, income evidence, etc.)",
+        "Step-by-step walkthrough of the application for your visa",
+        "Country-specific gotchas and what to verify at the official portal",
+        "Written follow-up with checklist and links",
+      ],
+      cta: "Book a pathway consultation",
+      ctaHref: "mailto:info@movemeto.eu?subject=Pathway%20Consultation",
+    },
+  ];
+
+  const ROADMAP = {
+    id: "roadmap",
+    name: "Relocation Roadmap",
+    price: "$299",
+    format: "4 × 45-min sessions over 3 months",
+    turnaround: "Written plan + email support between calls",
+    forWhom: "If you're actively moving, not just researching, and want a working partner across the whole arc.",
+    includes: [
+      "Four scheduled video sessions across 3 months",
+      "Written relocation plan tailored to your country, visa, and timeline",
+      "Email support between sessions for short, scoped questions",
+      "Standalone document reviews discounted while engaged",
+    ],
+    cta: "Start a roadmap",
+    ctaHref: "mailto:info@movemeto.eu?subject=Relocation%20Roadmap",
+  };
+
+  const renderServiceCard = (s, featured = false) => (
+    <article
+      key={s.id}
+      style={{
+        background: featured ? "#FFF8E5" : "#fff",
+        border: featured ? "1px solid #FFCC00" : "1px solid #E8DFC9",
+        borderRadius: 6,
+        padding: featured ? "26px 28px" : "22px 24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+        position: "relative",
+      }}
+    >
+      {featured && (
+        <span
+          style={{
+            position: "absolute",
+            top: -10,
+            left: 24,
+            background: "#FFCC00",
+            color: "#0A1F4D",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            padding: "4px 10px",
+            borderRadius: 4,
+          }}
+        >
+          Best value
+        </span>
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+        <h4
+          style={{
+            fontFamily: '"Fraunces", Georgia, serif',
+            fontSize: featured ? 24 : 20,
+            fontWeight: 600,
+            color: "#0A1F4D",
+            margin: 0,
+            lineHeight: 1.25,
+          }}
+        >
+          {s.name}
+        </h4>
+        <div
+          style={{
+            fontFamily: '"Fraunces", Georgia, serif',
+            fontSize: featured ? 28 : 24,
+            fontWeight: 600,
+            color: "#003399",
+            lineHeight: 1,
+          }}
+        >
+          {s.price}
+        </div>
+      </div>
+      <div style={{ fontSize: 13, color: "#4A5578", lineHeight: 1.5 }}>
+        <strong style={{ color: "#0A1F4D" }}>{s.format}</strong> · {s.turnaround}
+      </div>
+      <p style={{ fontSize: 14, color: "#0A1F4D", lineHeight: 1.55, margin: 0 }}>{s.forWhom}</p>
+      <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+        {s.includes.map((item, i) => (
+          <li
+            key={i}
+            style={{
+              fontSize: 14,
+              color: "#0A1F4D",
+              lineHeight: 1.5,
+              paddingLeft: 18,
+              position: "relative",
+            }}
+          >
+            <span aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, color: "#003399", fontSize: 14 }}>◆</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+      <a
+        href={s.ctaHref}
+        style={{
+          ...S.btn,
+          textAlign: "center",
+          textDecoration: "none",
+          marginTop: "auto",
+          display: "inline-block",
+        }}
+      >
+        {s.cta} →
+      </a>
+    </article>
+  );
+
+  const renderServices = () => (
+    <div style={{ animation: animateIn ? "fadeSlideIn .4s ease" : undefined }}>
+      <h2 style={S.h2}>Work with me</h2>
+      <p style={S.lede}>
+        Pay-as-you-go advisory for Americans working through an EU move.
+        Transparent prices, scoped deliverables, no retainer required to get started.
+      </p>
+
+      {/* About section */}
+      <section
+        aria-labelledby="services-about-h"
+        style={{
+          maxWidth: 820,
+          margin: "0 auto 56px",
+          padding: "32px 32px 28px",
+          background: "#fff",
+          border: "1px solid #E8DFC9",
+          borderRadius: 6,
+        }}
+      >
+        <h3
+          id="services-about-h"
+          style={{
+            fontFamily: '"Fraunces", Georgia, serif',
+            fontSize: 24,
+            fontWeight: 600,
+            color: "#0A1F4D",
+            margin: "0 0 16px",
+          }}
+        >
+          About me
+        </h3>
+        <div style={{ fontSize: 15, lineHeight: 1.65, color: "#0A1F4D" }}>
+          <p style={{ margin: "0 0 14px" }}>
+            I'm Justin Fuhrmann, a US/German dual citizen based in Arlington,
+            Virginia, with the unrestricted right to live and work on both
+            sides of the Atlantic. My family is planning our own move to
+            Germany over the next several years. We're not packing tomorrow;
+            we're a few years out, working through the same questions you
+            probably are: which visa, which city, which timeline, what to do
+            with the kids' schooling, what to do with the careers we already
+            have.
+          </p>
+          <p style={{ margin: "0 0 14px" }}>
+            My day job is with a professional services firm in Arlington,
+            Virginia, where I've worked for over a decade and currently lead
+            a number of project teams on a variety of clients. My work with
+            my teams and clients shares a common thread: analyze dense
+            regulations and translate it into information that people can
+            act on and deliver results that survive scrutiny. That's not a
+            bad description of what an EU-relocation advisor does either.
+          </p>
+          <p style={{ margin: "0 0 14px" }}>
+            I have a Juris Doctor degree from Villanova University. I'm not
+            licensed to practice immigration law in the US or any EU
+            country, but my training informs my work and critical thinking
+            abilities.
+          </p>
+          <p style={{ margin: "0 0 14px" }}>
+            On the civic side, I'm Vice Chair of the Arlington County
+            Transportation Commission and President of the Columbia Forest
+            Civic Association. Last year I helped draft a policy briefing on
+            Aachen's transportation and walkability achievements for a
+            county board member's Sister City visit, a useful exercise in
+            comparing two systems from a US vantage point. The walkable,
+            transit-oriented urban policy I work on locally is the same
+            policy area that draws many Americans toward European cities; I
+            think about these tradeoffs from both sides.
+          </p>
+          <p style={{ margin: "0 0 14px" }}>
+            I built movemeto.eu because the existing tools either funneled
+            into a hard sell or buried the data behind contact forms. The
+            advisory work below is the same impulse, scaled to the questions
+            a tool can't answer on its own.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>What I am not:</strong> an immigration lawyer (I have
+            legal training but I'm not licensed to practice immigration law
+            anywhere), a tax advisor, or a relocation agency. I don't file
+            applications for you, I don't represent you to a consulate, and
+            I don't tell you what your tax obligations look like. If you
+            need any of that, I'll point you to people I trust.
+          </p>
+        </div>
+      </section>
+
+      {/* À la carte services grid */}
+      <section aria-labelledby="services-menu-h" style={{ maxWidth: 1040, margin: "0 auto 56px" }}>
+        <h3
+          id="services-menu-h"
+          style={{
+            fontFamily: '"Fraunces", Georgia, serif',
+            fontSize: 26,
+            fontWeight: 600,
+            color: "#0A1F4D",
+            textAlign: "center",
+            margin: "0 0 8px",
+          }}
+        >
+          Pick what you need
+        </h3>
+        <p style={{ fontSize: 15, color: "#4A5578", textAlign: "center", maxWidth: 600, margin: "0 auto 32px", lineHeight: 1.55 }}>
+          Each service stands on its own. Buy one, see if it's useful, then
+          decide what's worth doing next.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 20,
+          }}
+        >
+          {SERVICES.map((s) => renderServiceCard(s, false))}
+        </div>
+      </section>
+
+      {/* Featured Roadmap card */}
+      <section aria-labelledby="services-roadmap-h" style={{ maxWidth: 720, margin: "0 auto 56px" }}>
+        <h3
+          id="services-roadmap-h"
+          style={{
+            fontFamily: '"Fraunces", Georgia, serif',
+            fontSize: 22,
+            fontWeight: 600,
+            color: "#0A1F4D",
+            textAlign: "center",
+            margin: "0 0 8px",
+          }}
+        >
+          Or work together across the whole move
+        </h3>
+        <p style={{ fontSize: 15, color: "#4A5578", textAlign: "center", maxWidth: 600, margin: "0 auto 32px", lineHeight: 1.55 }}>
+          For people past the research phase who want a working partner instead
+          of a series of one-off calls.
+        </p>
+        {renderServiceCard(ROADMAP, true)}
+      </section>
+
+      {/* How it works */}
+      <section aria-labelledby="services-how-h" style={{ maxWidth: 820, margin: "0 auto 56px" }}>
+        <h3
+          id="services-how-h"
+          style={{
+            fontFamily: '"Fraunces", Georgia, serif',
+            fontSize: 22,
+            fontWeight: 600,
+            color: "#0A1F4D",
+            textAlign: "center",
+            margin: "0 0 24px",
+          }}
+        >
+          How this works
+        </h3>
+        <ol
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            counterReset: "step",
+          }}
+        >
+          {[
+            {
+              title: "Email me",
+              body: "Use the button on any service above, or write to info@movemeto.eu directly. Tell me a bit about your situation.",
+            },
+            {
+              title: "Confirm scope and pay",
+              body: "I confirm I'm a fit for what you're asking and send a payment link. If I'm not the right person, I'll say so and suggest someone better.",
+            },
+            {
+              title: "Get the deliverable",
+              body: "Async products are returned in 48 hours. Live calls are scheduled within a week. Roadmaps kick off within two weeks.",
+            },
+          ].map((step, i) => (
+            <li
+              key={i}
+              style={{
+                background: "#fff",
+                border: "1px solid #E8DFC9",
+                borderRadius: 6,
+                padding: "20px 22px",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: '"Fraunces", Georgia, serif',
+                  fontSize: 32,
+                  fontWeight: 600,
+                  color: "#FFCC00",
+                  lineHeight: 1,
+                  marginBottom: 10,
+                }}
+                aria-hidden="true"
+              >
+                {i + 1}
+              </div>
+              <h4
+                style={{
+                  fontFamily: '"Fraunces", Georgia, serif',
+                  fontSize: 17,
+                  fontWeight: 600,
+                  color: "#0A1F4D",
+                  margin: "0 0 8px",
+                }}
+              >
+                {step.title}
+              </h4>
+              <p style={{ fontSize: 14, color: "#0A1F4D", lineHeight: 1.55, margin: 0 }}>{step.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Disclaimer card matching FAQ tone */}
+      <div
+        style={{
+          maxWidth: 820,
+          margin: "0 auto 32px",
+          padding: "16px 22px",
+          background: "#FFF8E5",
+          border: "1px solid #FFCC00",
+          borderRadius: 4,
+          fontSize: 13,
+          lineHeight: 1.55,
+          color: "#0A1F4D",
+        }}
+      >
+        <strong>Not legal or tax advice.</strong> The advisory services above
+        are research, planning, and document review. They are not the
+        practice of law, immigration consulting under any specific national
+        licensure, or tax preparation. Country-specific thresholds reset
+        annually and immigration rules change quarterly; I work from current
+        official sources but you should verify at the host country's portal
+        before filing anything.
+      </div>
+
+      {/* CTA back to tool */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          justifyContent: "center",
+          padding: "32px 0",
+          borderTop: "1px solid #EADFC2",
+        }}
+      >
+        <button
+          type="button"
+          style={S.btnGhost}
+          onClick={() => { setView("wizard"); setEntryMode(null); }}
+        >
+          Try the pathway finder first
+        </button>
+        <a
+          href="mailto:info@movemeto.eu"
+          style={{ ...S.btn, textDecoration: "none", display: "inline-block" }}
+        >
+          Email me
+        </a>
+      </div>
+    </div>
+  );
+
   /* ---------- Render ---------- */
   return (
     <div style={S.page}>
@@ -3634,6 +4151,19 @@ export default function MoveMeToEU() {
               }}>
               FAQ
             </button>
+            <button
+              type="button"
+              onClick={() => setView("services")}
+              aria-current={view === "services" ? "page" : undefined}
+              style={{
+                background:"transparent", border:"none", color:"#fff", fontFamily:"inherit", fontSize:14,
+                fontWeight: view === "services" ? 700 : 500,
+                opacity: view === "services" ? 1 : 0.75,
+                cursor:"pointer", padding:"6px 0",
+                borderBottom: view === "services" ? "2px solid #FFCC00" : "2px solid transparent",
+              }}>
+              Work with me
+            </button>
             {view === "wizard" && entryMode === "wizard" && step < 3 && !comparing && (
               <ol style={{ ...S.stepper, marginLeft:12, paddingLeft:12, borderLeft:"1px solid rgba(255,255,255,0.2)" }} aria-label="Progress">
                 {stepNames.slice(0, 3).map((name, i) => (
@@ -3650,7 +4180,7 @@ export default function MoveMeToEU() {
       </header>
 
       <main id="main" ref={mainRef} tabIndex={-1} style={S.main} role="main">
-        {view === "whyEU" ? renderWhyEU() : view === "faq" ? renderFAQ() : (
+        {view === "whyEU" ? renderWhyEU() : view === "faq" ? renderFAQ() : view === "services" ? renderServices() : (
           comparing ? renderCompare() : (
             entryMode === null ? renderIntro() :
             entryMode === "quiz" ? renderQuiz() : (
