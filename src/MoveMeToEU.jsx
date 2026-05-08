@@ -3725,7 +3725,7 @@ export default function MoveMeToEU() {
             Source: Global Peace Index 2024, Institute for Economics and Peace (visionofhumanity.org). The composite
             score covers societal safety and security (violent crime, terrorism, gun access, political instability),
             ongoing conflict, and militarization (military spending, arms transfers, nuclear capability). France
-            (#{gpiWorstEU.rank}) ranks lower partly due to nuclear weapons and arms exports; the US's rank of #{GPI_US_RANK}
+            (#{gpiWorstEU.rank}) ranks lower partly due to nuclear weapons and arms exports; the US's rank of #{GPI_US_RANK}{" "}
             reflects high violent crime and gun access as well as the world's largest military budget. Luxembourg and
             Malta are not included in IEP's 163-country dataset. Refreshed annually each June.
           </p>
