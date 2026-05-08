@@ -200,6 +200,20 @@ const QOL_INDICES = [
   { key:"happyPlanet",     label:"Happy Planet",    desc:"Happy Planet Index" },
 ];
 
+/* ---------- GLOBAL PEACE INDEX (global rank out of 163 countries, 2024) -----
+   Source: Institute for Economics & Peace, GPI 2024 (visionofhumanity.org).
+   Lower rank = more peaceful. Only EU member states included in the 163-country
+   dataset are listed; Luxembourg (~660k population) and Malta (~520k) are not
+   consistently included. Cyprus rank is the 2024 IEP reported value.
+   US rank 132 is the 2024 figure; also confirmed as 132 in the 2025 edition. */
+const GPI_RANK = {
+  IE:2,  AT:3,  PT:7,  DK:8,  SI:9,  CZ:12, FI:13, HU:14, HR:15, BE:16,
+  NL:18, DE:20, ES:23, EE:24, BG:26, SK:27, LV:30, LT:31, PL:32, IT:33,
+  RO:36, SE:39, GR:40, CY:78, FR:87,
+};
+const GPI_US_RANK = 132;
+const GPI_TOTAL   = 163;
+
 /* ---------- VISA PATHWAYS (EU-level + national) ------------------------- */
 const VISAS = [
   { id: "bluecard", label: "EU Blue Card", desc: "Pan-EU skilled worker permit for university-educated professionals with a qualifying job offer.", minEducation: "bachelors", needsJobOffer: true, minIncomeEUR: 45000, prYears: 5, icon: "◆" },
@@ -2982,6 +2996,17 @@ export default function MoveMeToEU() {
     const euCheaperThanUs = colRows.filter(x => x.rate < US_COL_PLUS_RENT).length;
     const maxCol = Math.max(US_COL_PLUS_RENT, ...colRows.map(x => x.rate));
 
+    // Global Peace Index: EU cluster vs US position on 163-country spectrum.
+    const gpiEuEntries = COUNTRIES
+      .map(c => ({ country: c, rank: GPI_RANK[c.code] }))
+      .filter(x => x.rank != null)
+      .sort((a, b) => a.rank - b.rank);
+    const gpiBestEU  = gpiEuEntries[0];
+    const gpiWorstEU = gpiEuEntries[gpiEuEntries.length - 1];
+    const gpiEuCount = gpiEuEntries.length;
+    // Position helpers for spectrum bar (0–100%)
+    const gpiPct = rank => ((rank - 1) / (GPI_TOTAL - 1)) * 100;
+
     const Bar = ({ label, rate, highlight, code, max = maxRate, unitLabel = "homicides per 100,000 residents" }) => {
       const pct = (rate / max) * 100;
       return (
@@ -3534,6 +3559,178 @@ export default function MoveMeToEU() {
         </section>
         </section>
 
+        {/* ================= GLOBAL PEACE INDEX ================= */}
+        <section aria-labelledby="gpi-h" style={{ marginBottom:48, paddingTop:32, borderTop:"2px solid #EADFC2" }}>
+          <h3 id="gpi-h" style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:28, fontWeight:500, marginBottom:4, color:"#0A1F4D", textAlign:"center" }}>
+            Global peacefulness: where the US sits
+          </h3>
+          <p style={{ fontSize:14, color:"#4A5578", marginBottom:24, maxWidth:720, lineHeight:1.55, textAlign:"center", margin:"0 auto 24px" }}>
+            The Global Peace Index ranks {GPI_TOTAL} countries across societal safety and security,
+            ongoing conflict, and militarization. The United States ranks{" "}
+            <strong>#{GPI_US_RANK} out of {GPI_TOTAL}</strong>. Of the {gpiEuCount} EU member states
+            covered by the index, the highest-ranked is{" "}
+            <Flag code={gpiBestEU.country.code} size={14} /> {gpiBestEU.country.name} at #{gpiBestEU.rank},
+            and the lowest-ranked is{" "}
+            <Flag code={gpiWorstEU.country.code} size={14} /> {gpiWorstEU.country.name} at #{gpiWorstEU.rank} —
+            still {GPI_US_RANK - gpiWorstEU.rank} places above the United States.
+          </p>
+
+          {/* Hero stats */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16, marginBottom:32 }}>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #8C1F1F" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>US global rank</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#8C1F1F", lineHeight:1 }}>
+                #{GPI_US_RANK}<span style={{ fontSize:24, color:"#4A5578" }}>/{GPI_TOTAL}</span>
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>out of 163 countries worldwide</div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #1F5D1F" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>Best-ranked EU country</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#1F5D1F", lineHeight:1 }}>
+                #{gpiBestEU.rank}<span style={{ fontSize:24, color:"#4A5578" }}>/{GPI_TOTAL}</span>
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                <Flag code={gpiBestEU.country.code} size={14} /> {gpiBestEU.country.name} — near the top of the global index
+              </div>
+            </div>
+            <div style={{ ...S.resultRow, marginBottom:0, borderLeft:"4px solid #FFCC00", background:"#FFFBEB" }}>
+              <div style={{ ...S.label, marginBottom:8 }}>The gap</div>
+              <div style={{ fontFamily:'"Fraunces", Georgia, serif', fontSize:44, fontWeight:500, color:"#7A5C00", lineHeight:1 }}>
+                {GPI_US_RANK - gpiWorstEU.rank}
+              </div>
+              <div style={{ fontSize:13, color:"#4A5578", marginTop:6 }}>
+                places separate the US from the lowest-ranked EU country
+                (<Flag code={gpiWorstEU.country.code} size={14} /> {gpiWorstEU.country.name}, #{gpiWorstEU.rank})
+              </div>
+            </div>
+          </div>
+
+          {/* Spectrum visualization */}
+          <div style={{ background:"#fff", border:"1px solid #E8DFC9", borderRadius:4, padding:"28px 24px 20px" }}>
+            <div style={{ fontSize:11, color:"#4A5578", marginBottom:20, textAlign:"center", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" }}>
+              Global Peace Index rank — 163 countries
+            </div>
+
+            {/* Track */}
+            <div style={{ position:"relative", paddingBottom:40 }}>
+              {/* Background track */}
+              <div style={{ height:40, background:"#F3EBDA", borderRadius:4, position:"relative", overflow:"visible" }}>
+
+                {/* Tick marks at 25 / 50 / 75 / 100 / 125 */}
+                {[25, 50, 75, 100, 125].map(t => (
+                  <div key={t} style={{
+                    position:"absolute",
+                    left:`${gpiPct(t)}%`,
+                    top:0, bottom:0,
+                    width:1,
+                    background:"#CEC2A0",
+                    opacity:0.5,
+                  }} />
+                ))}
+
+                {/* EU cluster band */}
+                <div
+                  role="img"
+                  aria-label={`EU countries cluster: ranks ${gpiBestEU.rank} to ${gpiWorstEU.rank} out of 163`}
+                  style={{
+                    position:"absolute",
+                    left:`${gpiPct(gpiBestEU.rank)}%`,
+                    width:`${gpiPct(gpiWorstEU.rank) - gpiPct(gpiBestEU.rank)}%`,
+                    top:0, height:"100%",
+                    background:"#003399",
+                    borderRadius:2,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                  }}
+                >
+                  <span style={{ fontSize:11, color:"#fff", fontWeight:700, letterSpacing:"0.05em" }}>EU 27</span>
+                </div>
+
+                {/* EU left label (best rank) */}
+                <div style={{
+                  position:"absolute",
+                  left:`${gpiPct(gpiBestEU.rank)}%`,
+                  top:-22,
+                  transform:"translateX(-50%)",
+                  fontSize:10,
+                  color:"#003399",
+                  fontWeight:700,
+                  whiteSpace:"nowrap",
+                }}>
+                  #{gpiBestEU.rank}
+                </div>
+
+                {/* EU right label (worst rank) */}
+                <div style={{
+                  position:"absolute",
+                  left:`${gpiPct(gpiWorstEU.rank)}%`,
+                  top:-22,
+                  transform:"translateX(-50%)",
+                  fontSize:10,
+                  color:"#003399",
+                  fontWeight:700,
+                  whiteSpace:"nowrap",
+                }}>
+                  #{gpiWorstEU.rank}
+                </div>
+
+                {/* US marker */}
+                <div style={{
+                  position:"absolute",
+                  left:`${gpiPct(GPI_US_RANK)}%`,
+                  top:-8,
+                  height:"calc(100% + 8px)",
+                  width:3,
+                  background:"#FFCC00",
+                  transform:"translateX(-50%)",
+                }} />
+                <div style={{
+                  position:"absolute",
+                  left:`${gpiPct(GPI_US_RANK)}%`,
+                  top:-22,
+                  transform:"translateX(-50%)",
+                  fontSize:10,
+                  color:"#7A5C00",
+                  fontWeight:700,
+                  whiteSpace:"nowrap",
+                }}>
+                  US #{GPI_US_RANK}
+                </div>
+              </div>
+
+              {/* Axis labels */}
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, fontSize:11, color:"#4A5578" }}>
+                <span>#1 Most peaceful</span>
+                <span>#50</span>
+                <span>#100</span>
+                <span>#163 Least peaceful</span>
+              </div>
+            </div>
+
+            {/* Legend row */}
+            <div style={{ display:"flex", flexWrap:"wrap", gap:16, marginTop:8 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ width:24, height:14, background:"#003399", borderRadius:2 }} />
+                <span style={{ fontSize:12, color:"#4A5578" }}>
+                  EU countries: #{gpiBestEU.rank} (<Flag code={gpiBestEU.country.code} size={12} /> {gpiBestEU.country.name}) to #{gpiWorstEU.rank} (<Flag code={gpiWorstEU.country.code} size={12} /> {gpiWorstEU.country.name})
+                </span>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ width:3, height:14, background:"#FFCC00" }} />
+                <span style={{ fontSize:12, color:"#4A5578" }}>United States: #{GPI_US_RANK}</span>
+              </div>
+            </div>
+          </div>
+
+          <p style={{ fontSize:12, color:"#4A5578", marginTop:12, fontStyle:"italic" }}>
+            Source: Global Peace Index 2024, Institute for Economics and Peace (visionofhumanity.org). The composite
+            score covers societal safety and security (violent crime, terrorism, gun access, political instability),
+            ongoing conflict, and militarization (military spending, arms transfers, nuclear capability). France
+            (#{gpiWorstEU.rank}) ranks lower partly due to nuclear weapons and arms exports; the US's rank of #{GPI_US_RANK}
+            reflects high violent crime and gun access as well as the world's largest military budget. Luxembourg and
+            Malta are not included in IEP's 163-country dataset. Refreshed annually each June.
+          </p>
+        </section>
+
         {/* Methodology */}
         <details style={{ marginBottom:32, fontSize:13, color:"#4A5578" }}>
           <summary style={{ cursor:"pointer", fontWeight:600 }}>About this data &amp; how it affects rankings</summary>
@@ -3570,6 +3767,15 @@ export default function MoveMeToEU() {
               jurisdictions, and reporting rates vary substantially, so absolute cross-border comparisons of
               those categories would be misleading. Per-100,000 homicide rates come from Eurostat crime
               statistics and the FBI Uniform Crime Reporting program.
+            </p>
+            <p style={{ marginBottom:8 }}>
+              <strong>Global Peace Index.</strong> The composite GPI score combines three domains: societal safety
+              and security (crime, terrorism, gun access, political instability, refugees), ongoing conflict
+              (domestic and external), and militarization (military spending, arms transfers, nuclear capability).
+              The index is published annually each June by the Institute for Economics and Peace and covers 163
+              countries; Luxembourg and Malta are not included. The GPI section on this page is informational —
+              it does not feed into the pathway finder's country scoring. Its purpose is to give the broadest
+              possible cross-national context: every EU country covered by the index ranks at least {GPI_US_RANK - gpiWorstEU.rank} places above the United States.
             </p>
             <p>
               <strong>Effect on pathway finder scores.</strong> The finder's <strong>Safety</strong> score
