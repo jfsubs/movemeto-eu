@@ -4193,9 +4193,10 @@ export default function MoveMeToEU() {
           </p>
           <p style={{ margin: "0 0 14px" }}>
             I built movemeto.eu because the existing tools either funneled
-            into a hard sell or buried the data behind contact forms. The
-            advisory work below is the same impulse, scaled to the questions
-            a tool can't answer on its own.
+            into a hard sell or buried data behind contact forms. The advisory
+            work I offer below seeks to solve that problem by offering assistance
+            that fits your needs and a low-stakes way to get answers to the
+            questions an online tool can't answer on its own.
           </p>
           <p style={{ margin: 0 }}>
             <strong>What I am not:</strong> an immigration lawyer (I have
