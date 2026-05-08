@@ -4165,9 +4165,9 @@ export default function MoveMeToEU() {
             have.
           </p>
           <p style={{ margin: "0 0 14px" }}>
-            My day job is with a professional services firm in Virginia,
-            where I've worked for over a decade and currently lead
-            a number of project teams on a variety of clients. My work with
+            My primary job is with a professional services firm in Virginia,
+            where I've worked for over a decade, leading multiple project teams
+            with a variety of clients. My work with
             my teams and clients shares a common thread: analyze dense
             regulations and translate it into information that people can
             act on and deliver results that survive scrutiny. That's not a
